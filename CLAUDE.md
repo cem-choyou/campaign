@@ -983,7 +983,7 @@ tests/   unit/  e2e/  fixtures/ (plan LDDLT d'origine + modèle)  screenshots/
 
 ## 19. État d'avancement
 
-- [ ] Lot 1 — Socle : **code terminé et testé (24/09/2026), mise en production en attente** des accès (voir « Reste à faire »)
+- [ ] Lot 1 — Socle : **en production depuis le 24/09/2026** sur https://campaign.choyou-tools.fr (avec le lot 2) ; reste la connexion Google réelle, Resend, couleur/logo et mentions légales (voir « Reste à faire »)
 - [x] Lot 2 — Import Excel + IA : terminé le 24/09/2026 (tests avec IA simulée + essai réel de Sonnet 5 validé), à mettre en production avec le lot 1
 - [ ] Lot 3 — Validation + Relais (V1 en service)
 - [ ] Lot 4 — Publication automatique
@@ -1009,6 +1009,8 @@ tests/   unit/  e2e/  fixtures/ (plan LDDLT d'origine + modèle)  screenshots/
 - Dépendances ajoutées hors §3 (validées) : internes de shadcn (`radix-ui`, `class-variance-authority`, `cn`, `tw-animate-css`, `shadcn` en dev), `server-only`, `tsx`, `@axe-core/playwright`, `@prisma/adapter-pg` (cité au §15). Pas de `next-themes` (thème par cookie).
 - e2e sur une base Postgres locale Docker (`docker-compose.dev.yml`, base `campaign_e2e`) plutôt qu'une branche Neon. `EMAIL_TRANSPORT=log` n'existe que pour ces tests (refusé si `AUTH_URL` est en https).
 - CSP : `style-src 'unsafe-inline'` (FullCalendar, Framer Motion) et `font-src data:` (police d'icônes de FullCalendar).
+
+**Mise en production (24/09/2026)** : VPS de n8n (`root@178.104.151.168`), derrière le **nginx existant** + certbot (pas Caddy, voir `deploy/RUNBOOK.md`), conteneur sur `127.0.0.1:3000`, Neon projet `campaign` (Francfort, `main`), seed sans démo. DNS OVH, point ouvert §16.1 tranché. Vérifié : HTTPS, redirection HTTP, en-têtes, `/api/health`, n8n intact. Points 2, 3 et 5 ci-dessous faits.
 
 **Reste à faire pour clore le lot 1 (mise en production)** — côté Cem :
 1. Couleur hex et logo d'IT for Business (`docs/brand/`) ; puis `SEED_BRAND_COLOR` au seed de prod.

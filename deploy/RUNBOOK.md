@@ -1,71 +1,70 @@
 # Campaign — mise en production (VPS)
 
-Cible : `https://campaign.choyou-tools.fr`, conteneur Docker sur le VPS de n8n, base Neon (branche `main`).
+Cible : `https://campaign.choyou-tools.fr`, conteneur Docker sur le VPS de n8n (`root@178.104.151.168`,
+Ubuntu 24.04), base Neon projet `campaign` (Francfort, branche `main`).
+Mise en production initiale : 24/09/2026.
 
-## 0. Prérequis (une seule fois)
+## Architecture sur le VPS
 
-1. **DNS** : enregistrement `A` `campaign.choyou-tools.fr` → IPv4 du VPS (et `AAAA` si IPv6), TTL 300.
-   Vérifier : `dig +short campaign.choyou-tools.fr`.
-2. **Reverse proxy** : inspecter le VPS avant toute modification.
-   - `docker ps --format '{{.Names}}\t{{.Image}}\t{{.Ports}}'`
-   - `sudo ss -tlnp | grep -E ':80 |:443 '`
-   - Si **rien** n'écoute sur 80/443 → utiliser le service `caddy` fourni (HTTPS automatique).
-   - Si **Traefik** gère déjà n8n → supprimer `caddy` du compose, brancher `app` sur le réseau de
-     Traefik et ajouter ces labels :
-     - ``traefik.http.routers.campaign.rule=Host(`campaign.choyou-tools.fr`)``
-     - `traefik.http.routers.campaign.tls.certresolver=<resolver existant>`
-     - `traefik.http.services.campaign.loadbalancer.server.port=3000`
-   - Si **Nginx** → server block `proxy_pass http://127.0.0.1:3000;` (publier le port 3000 en local
-     seulement : `127.0.0.1:3000:3000`) + certificat `certbot --nginx -d campaign.choyou-tools.fr`.
-   - Ne jamais modifier la configuration de n8n sans accord.
-3. **Google OAuth** : redirection autorisée
-   `https://campaign.choyou-tools.fr/api/auth/callback/google`.
+- Code : `/opt/campaign` (à côté de `/opt/n8n` et `/opt/albert`, jamais modifiés).
+- App : conteneur `campaign-app-1`, écoute seulement `127.0.0.1:3000` (`deploy/docker-compose.yml`).
+- Reverse proxy : **nginx du VPS** (comme n8n), site `/etc/nginx/sites-available/campaign`, copie de
+  `deploy/nginx/campaign.conf` + lignes TLS ajoutées par certbot.
+- HTTPS : Let's Encrypt via `certbot --nginx`, renouvelé par `certbot.timer`.
+- Secrets : `/opt/campaign/deploy/.env` (`chmod 600`, rempli sur le serveur, jamais dans le dépôt).
+  Modèle : `deploy/.env.production.example`.
+- DNS : OVH, zone `choyou-tools.fr`, enregistrement `A campaign → 178.104.151.168`.
 
-## 1. Premier déploiement
+## 1. Premier déploiement (déjà fait, pour mémoire)
 
 ```bash
-# Depuis le poste de dev : envoyer le code (sans node_modules ni secrets)
+# Poste de dev : envoyer le code (sans node_modules ni secrets)
 git archive --format=tar.gz -o /tmp/campaign.tar.gz HEAD
-scp /tmp/campaign.tar.gz vps:/opt/campaign/
-ssh vps 'cd /opt/campaign && tar xzf campaign.tar.gz && rm campaign.tar.gz'
+scp /tmp/campaign.tar.gz root@178.104.151.168:/opt/campaign/
+ssh root@178.104.151.168 'cd /opt/campaign && tar xzf campaign.tar.gz && rm campaign.tar.gz'
 
-# Sur le VPS
-cd /opt/campaign/deploy
-cp .env.production.example .env && chmod 600 .env
-# → remplir .env (AUTH_SECRET : openssl rand -base64 32)
-
+# VPS
+cd /opt/campaign/deploy          # .env rempli (AUTH_SECRET : openssl rand -base64 32)
 docker compose --profile tools build
-docker compose --profile tools run --rm tools npx prisma db push
-docker compose --profile tools run --rm -e SEED_DEMO=false tools npx tsx prisma/seed.ts
-docker compose up -d
+docker compose --profile tools run --rm -T tools npx prisma db push
+docker compose --profile tools run --rm -T -e SEED_DEMO=false tools npx tsx prisma/seed.ts
+docker compose up -d app
+cp nginx/campaign.conf /etc/nginx/sites-available/campaign
+ln -s /etc/nginx/sites-available/campaign /etc/nginx/sites-enabled/campaign
+nginx -t && systemctl reload nginx
+certbot --nginx -d campaign.choyou-tools.fr --non-interactive --redirect
 ```
+
+Google OAuth : origine `https://campaign.choyou-tools.fr`, redirection
+`https://campaign.choyou-tools.fr/api/auth/callback/google`, écran de consentement « Interne ».
 
 ## 2. Vérifications
 
 ```bash
-docker compose ps                                   # app "healthy"
+docker compose ps                                     # app "healthy"
+curl -s https://campaign.choyou-tools.fr/api/health   # {"status":"ok","db":"ok",…}
 curl -sI https://campaign.choyou-tools.fr/connexion | grep -iE 'strict-transport|content-security|x-content-type'
-curl -s https://campaign.choyou-tools.fr/api/health # {"status":"ok","db":"ok",…}
-curl -sI http://campaign.choyou-tools.fr            # 308 vers https
+curl -sI http://campaign.choyou-tools.fr              # 301 vers https
 ```
-
-Puis dans un navigateur : connexion Google avec un compte @choyou.fr, création d'une campagne,
-reprise de l'assistant, ajout d'un post dans le calendrier.
 
 ## 3. Mise à jour
 
 ```bash
-git archive --format=tar.gz -o /tmp/campaign.tar.gz HEAD && scp /tmp/campaign.tar.gz vps:/opt/campaign/
-ssh vps
+git archive --format=tar.gz -o /tmp/campaign.tar.gz HEAD
+scp /tmp/campaign.tar.gz root@178.104.151.168:/opt/campaign/
+ssh root@178.104.151.168
 cd /opt/campaign && tar xzf campaign.tar.gz && rm campaign.tar.gz && cd deploy
-docker tag campaign:latest campaign:previous        # point de retour
+docker tag campaign:latest campaign:previous          # point de retour
 docker compose --profile tools build
-docker compose --profile tools run --rm tools npx prisma db push   # si le schéma a changé
+docker compose --profile tools run --rm -T tools npx prisma db push   # si le schéma a changé
 docker compose up -d app
 ```
 
 `prisma db push` refuse toute perte de données sans confirmation explicite : lire le message avant
 d'accepter. Pour une migration destructive, faire d'abord une branche Neon de sauvegarde.
+Après une modification de `.env` : `docker compose up -d app` (recrée le conteneur).
+Après une modification de `nginx/campaign.conf` : reporter le changement dans
+`/etc/nginx/sites-available/campaign` **sans effacer les lignes certbot**, puis `nginx -t && systemctl reload nginx`.
 
 ## 4. Retour arrière
 
@@ -79,6 +78,6 @@ Base : Neon garde l'historique (restauration à un instant T depuis la console N
 ## 5. Journaux
 
 ```bash
-docker compose logs -f app     # JSON, sans données personnelles ni jetons
-docker compose logs -f caddy
+docker compose logs -f app       # JSON, sans données personnelles ni jetons
+tail -f /var/log/nginx/access.log /var/log/nginx/error.log
 ```
