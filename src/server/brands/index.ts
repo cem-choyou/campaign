@@ -4,6 +4,7 @@ import { uniqueSlug } from "@/lib/slug";
 import type {
   brandCreateSchema,
   brandGeneralSchema,
+  brandPromptSchema,
   contributorSchema,
   membershipUpdateSchema,
   socialAccountSchema,
@@ -52,6 +53,49 @@ export async function updateBrandGeneral(input: z.output<typeof brandGeneralSche
     data: { brandId: brand.id, actorId: actor.id, type: "brand.updated" },
   });
   return brand;
+}
+
+// ---------- Prompt (§10) ----------
+
+export async function getBrandPrompt(brandId: string) {
+  const brand = await db.brand.findUniqueOrThrow({
+    where: { id: brandId },
+    select: {
+      editorialLine: true,
+      tone: true,
+      dos: true,
+      donts: true,
+      examplePosts: true,
+      hashtags: true,
+      defaultCta: true,
+      mentionHandle: true,
+      extraInstructions: true,
+    },
+  });
+  const examples = Array.isArray(brand.examplePosts)
+    ? (brand.examplePosts as { body?: unknown; note?: unknown }[]).flatMap((e) =>
+        typeof e?.body === "string"
+          ? [{ body: e.body, note: typeof e.note === "string" ? e.note : "" }]
+          : [],
+      )
+    : [];
+  return { ...brand, examplePosts: examples };
+}
+
+export type BrandPromptValues = Awaited<ReturnType<typeof getBrandPrompt>>;
+
+/** Autosaved: no Activity per keystroke batch, only the fields. */
+export async function updateBrandPrompt(input: z.output<typeof brandPromptSchema>) {
+  const { brandId, ...fields } = input;
+  await db.brand.update({
+    where: { id: brandId },
+    data: {
+      ...fields,
+      defaultCta: fields.defaultCta ?? null,
+      mentionHandle: fields.mentionHandle ?? null,
+      extraInstructions: fields.extraInstructions ?? null,
+    },
+  });
 }
 
 // ---------- Social accounts ----------

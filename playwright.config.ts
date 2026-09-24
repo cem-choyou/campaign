@@ -49,6 +49,8 @@ export default defineConfig({
           AUTH_URL: E2E.baseURL,
           RESEND_API_KEY: "",
           EMAIL_TRANSPORT: "log",
+          AI_TRANSPORT: "mock",
+          AI_DAILY_LIMIT_PER_BRAND: "300",
         },
       },
 });

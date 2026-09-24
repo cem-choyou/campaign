@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
   brandGeneralSchema,
+  brandPromptSchema,
   contributorSchema,
   invitationSchema,
   membershipUpdateSchema,
@@ -18,6 +19,7 @@ import {
   setContributorActive,
   setSocialAccountActive,
   updateBrandGeneral,
+  updateBrandPrompt,
   updateMembership,
 } from "@/server/brands";
 import { runAction } from "@/server/errors";
@@ -35,6 +37,14 @@ export async function saveBrandGeneralAction(input: z.input<typeof brandGeneralS
     const access = await requireBrandPermission({ brandId: data.brandId }, "brand.manage");
     await updateBrandGeneral(data, access.user);
     refresh(access.brand.slug);
+  });
+}
+
+/** Autosave of the prompt form: no revalidation, the page keeps its local state. */
+export async function saveBrandPromptAction(input: z.input<typeof brandPromptSchema>) {
+  return runAction(brandPromptSchema, input, async (data) => {
+    await requireBrandPermission({ brandId: data.brandId }, "brand.manage");
+    await updateBrandPrompt(data);
   });
 }
 

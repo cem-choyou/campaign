@@ -58,6 +58,7 @@ const SCREENS: Screen[] = [
     cookies: { "planning-mode": "calendar", "calendar-view": "timeGridWeek" },
   },
   { name: "13-reglages-marque", path: `${BRAND}/reglages/marque` },
+  { name: "13b-reglages-prompt", path: `${BRAND}/reglages/prompt` },
   { name: "14-reglages-comptes", path: `${BRAND}/reglages/comptes` },
   { name: "15-reglages-acces", path: `${BRAND}/reglages/acces` },
   { name: "16-reglages-relais", path: `${BRAND}/reglages/relais` },

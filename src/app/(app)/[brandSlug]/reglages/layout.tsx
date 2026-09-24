@@ -25,6 +25,7 @@ export default async function SettingsLayout({
         className="mx-4 sm:mx-8"
         items={[
           { href: `${base}/marque`, label: settingsCopy.tabs.brand },
+          { href: `${base}/prompt`, label: settingsCopy.tabs.prompt },
           { href: `${base}/comptes`, label: settingsCopy.tabs.accounts },
           { href: `${base}/acces`, label: settingsCopy.tabs.access },
           { href: `${base}/relais`, label: settingsCopy.tabs.contributors },

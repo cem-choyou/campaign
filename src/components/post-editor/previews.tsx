@@ -70,7 +70,7 @@ export function LinkedInPreview({
             )}
           </>
         ) : (
-          <span className="text-[#999] italic">{copy.emptyBody}</span>
+          <span className="text-[#666] italic dark:text-[#a0a0a0]">{copy.emptyBody}</span>
         )}
       </div>
       {media && (

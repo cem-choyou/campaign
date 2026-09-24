@@ -25,6 +25,43 @@ export function errorResponse(error: unknown, event: string): Response {
 }
 
 /**
+ * Plain UTF-8 streaming response from a text generator. The first chunk is pulled before
+ * answering, so early failures (quota, configuration) still get a proper JSON status; a failure
+ * mid-stream aborts the response.
+ */
+export async function textStreamResponse(
+  iterator: AsyncGenerator<string, string>,
+): Promise<Response> {
+  const first = await iterator.next();
+  const encoder = new TextEncoder();
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      if (!first.done) controller.enqueue(encoder.encode(first.value));
+      else controller.close();
+    },
+    async pull(controller) {
+      try {
+        const next = await iterator.next();
+        if (next.done) controller.close();
+        else controller.enqueue(encoder.encode(next.value));
+      } catch (error) {
+        controller.error(error);
+      }
+    },
+    async cancel() {
+      await iterator.return("");
+    },
+  });
+  return new Response(body, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
+/**
  * Same-origin check for cookie-authenticated POST routes (defence in depth on top of SameSite=Lax):
  * browsers always send Origin on POST fetches.
  */
