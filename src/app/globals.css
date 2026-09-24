@@ -1,0 +1,391 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/*
+ * Theme: <html data-theme="light|dark|system"> comes from the `theme` preference cookie.
+ * "system" follows prefers-color-scheme in pure CSS: no script, no flash.
+ */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where([data-theme="system"], [data-theme="system"] *) {
+      @slot;
+    }
+  }
+}
+
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+
+  /* Type scale: 13 / 14 / 16 / 20 / 24 / 32 */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.25rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.5rem;
+  --text-xl--line-height: 2rem;
+  --text-2xl: 2rem;
+  --text-2xl--line-height: 2.5rem;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Post statuses (§8.10) */
+  --color-status-draft: var(--status-draft);
+  --color-status-draft-bg: var(--status-draft-bg);
+  --color-status-review: var(--status-review);
+  --color-status-review-bg: var(--status-review-bg);
+  --color-status-approved: var(--status-approved);
+  --color-status-approved-bg: var(--status-approved-bg);
+  --color-status-published: var(--status-published);
+  --color-status-published-bg: var(--status-published-bg);
+  --color-status-failed: var(--status-failed);
+  --color-status-failed-bg: var(--status-failed-bg);
+
+  /* Radii 8 / 12 px */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.25rem;
+  --radius-4xl: 1.5rem;
+
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 1px rgb(0 0 0 / 0.03);
+  --shadow-raised: 0 8px 24px -8px rgb(0 0 0 / 0.12), 0 2px 6px -2px rgb(0 0 0 / 0.06);
+}
+
+/* ---------- Light (default) ---------- */
+:root {
+  color-scheme: light;
+  --radius: 0.5rem;
+
+  /* Brand accent: set per brand by the app shell (src/lib/color.ts#brandAccentVars). */
+  --brand-light: #1f3a5f;
+  --brand-light-foreground: #ffffff;
+  --brand-dark: #8fa9cc;
+  --brand-dark-foreground: #0a0a0a;
+  --brand: var(--brand-light);
+  --brand-foreground: var(--brand-light-foreground);
+
+  --background: #ffffff;
+  --foreground: #18181b;
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #5b5b66;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #c62828;
+  --border: #e4e4e7;
+  --input: #d9d9de;
+  --ring: var(--brand);
+
+  --sidebar: #fafafa;
+  --sidebar-foreground: #27272a;
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-foreground);
+  --sidebar-accent: #efeff1;
+  --sidebar-accent-foreground: #18181b;
+  --sidebar-border: #e8e8eb;
+  --sidebar-ring: var(--brand);
+
+  --status-draft: #5b5b66;
+  --status-draft-bg: #f4f4f5;
+  --status-review: #a15c00;
+  --status-review-bg: #fff4e0;
+  --status-approved: #1d4ed8;
+  --status-approved-bg: #e8efff;
+  --status-published: #15803d;
+  --status-published-bg: #e7f7ec;
+  --status-failed: #c62828;
+  --status-failed-bg: #fdecec;
+}
+
+/* ---------- Dark ---------- */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --brand: var(--brand-dark);
+  --brand-foreground: var(--brand-dark-foreground);
+
+  --background: #111113;
+  --foreground: #ededef;
+  --card: #18181b;
+  --card-foreground: #ededef;
+  --popover: #1c1c20;
+  --popover-foreground: #ededef;
+  --secondary: #26262b;
+  --secondary-foreground: #ededef;
+  --muted: #232328;
+  --muted-foreground: #a1a1aa;
+  --accent: #26262b;
+  --accent-foreground: #ededef;
+  --destructive: #f87171;
+  --border: #2c2c32;
+  --input: #3a3a42;
+
+  --sidebar: #141417;
+  --sidebar-foreground: #d4d4d8;
+  --sidebar-accent: #222227;
+  --sidebar-accent-foreground: #ededef;
+  --sidebar-border: #232328;
+
+  --status-draft: #a1a1aa;
+  --status-draft-bg: #232328;
+  --status-review: #fbbf24;
+  --status-review-bg: #3a2a0b;
+  --status-approved: #93b4ff;
+  --status-approved-bg: #172554;
+  --status-published: #4ade80;
+  --status-published-bg: #0f2e1b;
+  --status-failed: #f87171;
+  --status-failed-bg: #3b1212;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="system"] {
+    color-scheme: dark;
+    --brand: var(--brand-dark);
+    --brand-foreground: var(--brand-dark-foreground);
+
+    --background: #111113;
+    --foreground: #ededef;
+    --card: #18181b;
+    --card-foreground: #ededef;
+    --popover: #1c1c20;
+    --popover-foreground: #ededef;
+    --secondary: #26262b;
+    --secondary-foreground: #ededef;
+    --muted: #232328;
+    --muted-foreground: #a1a1aa;
+    --accent: #26262b;
+    --accent-foreground: #ededef;
+    --destructive: #f87171;
+    --border: #2c2c32;
+    --input: #3a3a42;
+
+    --sidebar: #141417;
+    --sidebar-foreground: #d4d4d8;
+    --sidebar-accent: #222227;
+    --sidebar-accent-foreground: #ededef;
+    --sidebar-border: #232328;
+
+    --status-draft: #a1a1aa;
+    --status-draft-bg: #232328;
+    --status-review: #fbbf24;
+    --status-review-bg: #3a2a0b;
+    --status-approved: #93b4ff;
+    --status-approved-bg: #172554;
+    --status-published: #4ade80;
+    --status-published-bg: #0f2e1b;
+    --status-failed: #f87171;
+    --status-failed-bg: #3b1212;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+  body {
+    @apply bg-background text-foreground text-sm;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- FullCalendar (planning) ---------- */
+.campaign-calendar .fc {
+  --fc-border-color: var(--border);
+  --fc-page-bg-color: var(--background);
+  --fc-neutral-bg-color: var(--muted);
+  --fc-neutral-text-color: var(--muted-foreground);
+  --fc-today-bg-color: color-mix(in oklab, var(--brand) 7%, transparent);
+  --fc-event-bg-color: transparent;
+  --fc-event-border-color: transparent;
+  --fc-event-text-color: var(--foreground);
+  --fc-list-event-hover-bg-color: var(--muted);
+  --fc-now-indicator-color: var(--destructive);
+  --fc-highlight-color: color-mix(in oklab, var(--brand) 12%, transparent);
+  font-size: 0.8125rem;
+}
+.campaign-calendar .fc .fc-scrollgrid {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+.campaign-calendar .fc .fc-col-header-cell-cushion,
+.campaign-calendar .fc .fc-daygrid-day-number,
+.campaign-calendar .fc .fc-list-day-text,
+.campaign-calendar .fc .fc-list-day-side-text {
+  color: var(--muted-foreground);
+  text-decoration: none;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+.campaign-calendar .fc .fc-day-today .fc-daygrid-day-number {
+  color: var(--brand);
+  font-weight: 700;
+}
+.campaign-calendar .fc .fc-daygrid-day.fc-day-past {
+  background: color-mix(in oklab, var(--muted) 45%, transparent);
+}
+.campaign-calendar .fc .fc-daygrid-day:not(.fc-day-past) {
+  cursor: pointer;
+}
+.campaign-calendar .fc .fc-daygrid-day-frame {
+  min-height: 6.5rem;
+}
+.campaign-calendar .fc .fc-daygrid-more-link {
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+.campaign-calendar .fc .fc-popover {
+  background: var(--popover);
+  border-radius: 0.5rem;
+  box-shadow: var(--shadow-raised);
+}
+.campaign-calendar .fc .fc-timegrid-slot {
+  height: 2.25rem;
+}
+
+/* Events: style by status (§8.7). Text colors come from status tokens, readable in both themes. */
+.campaign-calendar .fc .post-event {
+  border-radius: 6px;
+  border: 1px solid transparent;
+  margin: 1px 2px;
+  font-size: 0.75rem;
+  line-height: 1.1rem;
+  cursor: pointer;
+  transition: box-shadow 150ms ease-out;
+}
+.campaign-calendar .fc .post-event:hover {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--brand) 35%, transparent);
+}
+.campaign-calendar .fc .post-event .fc-event-main {
+  color: inherit;
+}
+.campaign-calendar .fc .post-event--draft {
+  background: var(--status-draft-bg);
+  border: 1px dashed color-mix(in oklab, var(--status-draft) 70%, transparent);
+  color: var(--foreground);
+}
+.campaign-calendar .fc .post-event--in_review {
+  background: var(--card);
+  border: 1.5px solid var(--status-review);
+  color: var(--foreground);
+}
+.campaign-calendar .fc .post-event--approved,
+.campaign-calendar .fc .post-event--processing {
+  background: var(--status-approved);
+  color: var(--background);
+}
+.campaign-calendar .fc .post-event--published {
+  background: var(--status-published-bg);
+  border-color: color-mix(in oklab, var(--status-published) 35%, transparent);
+  color: var(--status-published);
+}
+.campaign-calendar .fc .post-event--failed {
+  background: var(--status-failed-bg);
+  border-color: var(--status-failed);
+  color: var(--status-failed);
+}
+.campaign-calendar--list .fc .post-event,
+.campaign-calendar--list .fc .post-event:hover {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none;
+  color: var(--foreground) !important;
+}
+.campaign-calendar .fc .fc-list-event-dot {
+  display: none;
+}
+.campaign-calendar .fc .fc-list-empty {
+  background: transparent;
+  color: var(--muted-foreground);
+}
+
+/* Phones: month cells are too narrow for text, events become compact status chips. */
+@media (max-width: 639px) {
+  .campaign-calendar:not(.campaign-calendar--list) .fc-daygrid .post-event span {
+    display: none;
+  }
+  .campaign-calendar .fc .fc-daygrid-day-frame {
+    min-height: 4.5rem;
+  }
+  .campaign-calendar .fc .fc-col-header-cell-cushion {
+    font-size: 0.6875rem;
+    padding-inline: 0;
+  }
+}
+
+/* Days outside the month: tinted background instead of FullCalendar's 0.3 opacity (contrast). */
+.campaign-calendar .fc .fc-day-other .fc-daygrid-day-top {
+  opacity: 1;
+}
+.campaign-calendar .fc .fc-daygrid-day.fc-day-other {
+  background: color-mix(in oklab, var(--muted) 60%, transparent);
+}

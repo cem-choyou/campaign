@@ -1,0 +1,49 @@
+# Production stack on the VPS: Campaign + Caddy (automatic HTTPS).
+# If the VPS already runs a reverse proxy (Traefik, Nginx) for n8n, drop the `caddy` service and
+# attach `app` to that proxy instead (see RUNBOOK.md).
+name: campaign
+
+services:
+  app:
+    build:
+      context: ..
+      target: runner
+    image: campaign:latest
+    env_file: .env
+    restart: unless-stopped
+    expose:
+      - "3000"
+    networks: [web]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    networks: [web]
+
+  # One-off tasks: docker compose --profile tools run --rm tools npx prisma db push
+  tools:
+    build:
+      context: ..
+      target: tools
+    image: campaign-tools:latest
+    env_file: .env
+    profiles: [tools]
+    networks: [web]
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  web:

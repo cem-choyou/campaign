@@ -1,0 +1,33 @@
+# deps
+node_modules/
+.pnp*
+
+# next
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# prisma
+src/generated/
+
+# env / secrets
+.env
+.env.*
+!.env.example
+!deploy/.env.production.example
+
+# tests
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+playwright/.auth/
+coverage/
+
+# misc
+.DS_Store
+Thumbs.db
+*.log
+.vercel
+.claude/settings.local.json

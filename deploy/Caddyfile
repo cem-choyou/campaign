@@ -1,0 +1,11 @@
+# Let's Encrypt certificates are obtained and renewed automatically; HTTP redirects to HTTPS.
+# Security headers (HSTS, CSP…) are set by the app itself.
+campaign.choyou-tools.fr {
+	encode zstd gzip
+	reverse_proxy app:3000
+	header -Server
+	log {
+		output stdout
+		format json
+	}
+}

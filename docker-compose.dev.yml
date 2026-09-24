@@ -1,0 +1,15 @@
+# Local Postgres for development without Neon and for e2e tests.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: campaign
+      POSTGRES_PASSWORD: campaign
+      POSTGRES_DB: campaign
+    ports:
+      - "5433:5432"
+    volumes:
+      - campaign-pg:/var/lib/postgresql/data
+      - ./deploy/dev/init-e2e.sql:/docker-entrypoint-initdb.d/init-e2e.sql:ro
+volumes:
+  campaign-pg:

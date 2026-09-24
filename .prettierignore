@@ -1,0 +1,10 @@
+.next
+node_modules
+src/generated
+tests/screenshots
+playwright-report
+test-results
+*.xlsx
+CLAUDE.md
+AGENTS.md
+deploy/RUNBOOK.md

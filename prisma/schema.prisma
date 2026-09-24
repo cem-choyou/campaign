@@ -1,0 +1,418 @@
+// Campaign — data model. Source: CLAUDE.md §6.2 (+ lot 1 changes: Invitation, soft delete
+// on Post/Content, list defaults, extra indexes). All dates are stored in UTC.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+// Prisma 7: connection URLs live in prisma.config.ts (direct) and src/server/db.ts (pooled).
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Auth.js ----------
+model User {
+  id            String       @id @default(cuid())
+  email         String       @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  isSuperAdmin  Boolean      @default(false) // ChoYou team: access to every brand
+  isActive      Boolean      @default(true)
+  lastBrandId   String? // last opened brand, to resume where the user left off
+  accounts      Account[]
+  sessions      Session[]
+  memberships   Membership[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------- Brands & access ----------
+model Brand {
+  id                String          @id @default(cuid())
+  name              String
+  slug              String          @unique
+  color             String          @default("#1F3A5F")
+  logoUrl           String?
+  timezone          String          @default("Europe/Paris")
+  // Structured prompt (§10)
+  editorialLine     String          @default("") @db.Text
+  tone              String          @default("") @db.Text
+  dos               String          @default("") @db.Text
+  donts             String          @default("") @db.Text
+  examplePosts      Json            @default("[]") // [{ body, note? }]
+  hashtags          String[]        @default([])
+  defaultCta        String?
+  mentionHandle     String?
+  extraInstructions String?         @db.Text
+  // Contributor settings
+  missionD1Hour     Int             @default(18) // local hour of the D-1 e-mail
+  archivedAt        DateTime?
+  memberships       Membership[]
+  invitations       Invitation[]
+  accounts          SocialAccount[]
+  campaigns         Campaign[]
+  contributors      Contributor[]
+  activities        Activity[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+enum BrandRole {
+  ADMIN
+  VALIDATOR
+  EDITOR
+  CLIENT
+}
+
+model Membership {
+  id               String    @id @default(cuid())
+  userId           String
+  brandId          String
+  role             BrandRole
+  clientCanApprove Boolean   @default(false)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brand            Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now())
+
+  @@unique([userId, brandId])
+  @@index([brandId])
+}
+
+// Pending access to a brand (§9.2). Only the SHA-256 of the token is stored.
+model Invitation {
+  id               String    @id @default(cuid())
+  brandId          String
+  email            String
+  role             BrandRole
+  clientCanApprove Boolean   @default(false)
+  tokenHash        String    @unique
+  invitedById      String
+  expiresAt        DateTime
+  acceptedAt       DateTime?
+  revokedAt        DateTime?
+  brand            Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now())
+
+  @@index([email])
+  @@index([brandId])
+}
+
+enum Platform {
+  LINKEDIN
+  YOUTUBE
+}
+
+enum PublishMode {
+  AUTO // n8n publishes (LinkedIn page, lot 4)
+  STUDIO // scheduled by hand in YouTube Studio
+  KIT // a person publishes with their kit
+}
+
+model SocialAccount {
+  id               String       @id @default(cuid())
+  brandId          String
+  platform         Platform
+  name             String
+  url              String?
+  externalId       String? // urn:li:organization:… or channelId
+  publishMode      PublishMode
+  kitContributorId String? // if KIT: who receives the kit
+  accessTokenEnc   String?      @db.Text // lot 4, AES-256-GCM
+  refreshTokenEnc  String?      @db.Text
+  tokenExpiresAt   DateTime?
+  connectedById    String?
+  connectedAt      DateTime?
+  isActive         Boolean      @default(true)
+  brand            Brand        @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  kitContributor   Contributor? @relation("KitContributor", fields: [kitContributorId], references: [id], onDelete: SetNull)
+  posts            Post[]
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([brandId])
+}
+
+// ---------- Campaigns ----------
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+model Campaign {
+  id            String         @id @default(cuid())
+  brandId       String
+  name          String
+  status        CampaignStatus @default(DRAFT)
+  objective     String?        @db.Text
+  audience      String?        @db.Text
+  brief         String?        @db.Text
+  keyMessage    String?        @db.Text // wizard step 2 (§8.5)
+  callToAction  String?
+  startDate     DateTime?      @db.Date // Monday of week 1
+  endDate       DateTime?      @db.Date
+  mainContentId String?
+  wizardStep    Int            @default(1)
+  launchedAt    DateTime?
+  createdById   String
+  archivedAt    DateTime?
+  brand         Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  contents      Content[]
+  posts         Post[]
+  imports       ImportJob[]
+  activities    Activity[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([brandId, status])
+  @@index([brandId, archivedAt])
+}
+
+enum ContentType {
+  LONG_VIDEO
+  CAPSULE
+  SHORT
+  IMAGE
+  DOCUMENT
+}
+
+model Content {
+  id             String      @id @default(cuid())
+  campaignId     String
+  code           String // CAP1, SHORT1, VID-LONG (unique within the campaign)
+  type           ContentType
+  title          String
+  mediaUrl       String?
+  storageKey     String? // R2 (lot 4)
+  durationSec    Int?
+  summary        String?     @db.Text
+  youtubeVideoId String?
+  parentId       String? // a Short points to its long video
+  deletedAt      DateTime? // soft delete (undo)
+  parent         Content?    @relation("ContentParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children       Content[]   @relation("ContentParent")
+  campaign       Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  posts          Post[]      @relation("PostContent")
+  linkedFrom     Post[]      @relation("PostLinkTo")
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@unique([campaignId, code])
+}
+
+enum PostFormat {
+  VIDEO_POST
+  SHORT
+  LONG_VIDEO
+  IMAGE
+  DOCUMENT
+  TEXT
+}
+
+enum PostStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  PROCESSING
+  PUBLISHED
+  FAILED
+  CANCELLED
+}
+
+enum BodySource {
+  EMPTY
+  AI
+  HUMAN
+  IMPORTED
+}
+
+model Post {
+  id                  String         @id @default(cuid())
+  campaignId          String
+  contentId           String?
+  socialAccountId     String? // published by a brand account…
+  authorContributorId String? // …or by a contributor from their own profile
+  format              PostFormat
+  scheduledAt         DateTime // UTC
+  angle               String?        @db.Text
+  body                String?        @db.Text
+  bodySource          BodySource     @default(EMPTY)
+  youtubeTitle        String?
+  youtubeDescription  String?        @db.Text
+  youtubeTags         String[]       @default([])
+  linkToContentId     String?
+  linkToUrl           String?
+  relatedVideoAdded   Boolean        @default(false)
+  status              PostStatus     @default(DRAFT)
+  submittedAt         DateTime?
+  approvedById        String?
+  approvedAt          DateTime?
+  rejectionReason     String?        @db.Text
+  aiPromptUsed        Json?
+  lockedAt            DateTime?
+  attempts            Int            @default(0)
+  lastError           String?        @db.Text
+  externalId          String?
+  publishedUrl        String?
+  publishedAt         DateTime?
+  importRowRef        String?
+  deletedAt           DateTime? // soft delete (undo)
+  campaign            Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  content             Content?       @relation("PostContent", fields: [contentId], references: [id], onDelete: SetNull)
+  linkToContent       Content?       @relation("PostLinkTo", fields: [linkToContentId], references: [id], onDelete: SetNull)
+  socialAccount       SocialAccount? @relation(fields: [socialAccountId], references: [id], onDelete: SetNull)
+  authorContributor   Contributor?   @relation("AuthoredPosts", fields: [authorContributorId], references: [id], onDelete: SetNull)
+  missions            Mission[]
+  comments            Comment[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  @@index([status, scheduledAt])
+  @@index([campaignId, scheduledAt])
+}
+
+// ---------- Contributors ----------
+model Contributor {
+  id          String          @id @default(cuid())
+  brandId     String
+  firstName   String
+  lastName    String?
+  email       String
+  jobTitle    String?
+  linkedinUrl String?
+  toneNote    String?         @db.Text
+  samplePosts Json            @default("[]")
+  isActive    Boolean         @default(true)
+  brand       Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  missions    Mission[]
+  authored    Post[]          @relation("AuthoredPosts")
+  kitFor      SocialAccount[] @relation("KitContributor")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([brandId, email])
+  @@index([brandId])
+}
+
+enum MissionType {
+  POST
+  RELAY
+}
+
+enum MissionStatus {
+  PLANNED
+  NOTIFIED
+  OPENED
+  DONE
+  MISSED
+  CANCELLED
+}
+
+model Mission {
+  id                String        @id @default(cuid())
+  postId            String
+  contributorId     String
+  type              MissionType
+  body              String?       @db.Text
+  suggestedComments Json          @default("[]")
+  status            MissionStatus @default(PLANNED)
+  sendingLockAt     DateTime?
+  d1SentAt          DateTime?
+  d0SentAt          DateTime?
+  openedAt          DateTime?
+  doneAt            DateTime?
+  publishedUrl      String?
+  reminderSentAt    DateTime?
+  escalatedAt       DateTime?
+  post              Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  contributor       Contributor   @relation(fields: [contributorId], references: [id], onDelete: Cascade)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@unique([postId, contributorId])
+}
+
+// ---------- Misc ----------
+model Comment {
+  id         String    @id @default(cuid())
+  postId     String
+  authorId   String
+  body       String    @db.Text
+  resolvedAt DateTime?
+  post       Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+}
+
+enum ImportStatus {
+  PARSED
+  NEEDS_MAPPING
+  IMPORTED
+  FAILED
+}
+
+model ImportJob {
+  id          String       @id @default(cuid())
+  brandId     String
+  campaignId  String?
+  fileName    String
+  status      ImportStatus
+  mapping     Json?
+  report      Json
+  createdById String
+  campaign    Campaign?    @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  createdAt   DateTime     @default(now())
+}
+
+model Activity {
+  id         String    @id @default(cuid())
+  brandId    String
+  campaignId String?
+  postId     String?
+  actorId    String?
+  actorLabel String?
+  type       String // post.approved, post.published, mission.done, campaign.renamed…
+  meta       Json      @default("{}")
+  brand      Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  createdAt  DateTime  @default(now())
+
+  @@index([campaignId, createdAt])
+  @@index([brandId, createdAt])
+}

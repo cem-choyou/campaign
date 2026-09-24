@@ -1,0 +1,75 @@
+export const campaignsCopy = {
+  title: "Campagnes",
+  description: "Toutes les campagnes de la marque, de la préparation au bilan.",
+  create: "Créer une campagne",
+  searchPlaceholder: "Rechercher une campagne…",
+  filters: {
+    all: "Toutes",
+    DRAFT: "Brouillons",
+    ACTIVE: "En cours",
+    COMPLETED: "Terminées",
+    ARCHIVED: "Archivées",
+  },
+  view: { label: "Affichage", cards: "Cartes", table: "Tableau" },
+  filterLabel: "Filtrer par statut",
+  columns: {
+    name: "Campagne",
+    status: "Statut",
+    dates: "Dates",
+    progress: "Progression",
+    channels: "Canaux",
+    next: "Prochaine publication",
+  },
+  noDates: "Dates à définir",
+  datesRange: (start: string, end?: string) => (end ? `${start} → ${end}` : `À partir du ${start}`),
+  progress: (published: number, total: number) =>
+    total === 0 ? "Aucun post" : `${published} publié${published > 1 ? "s" : ""} sur ${total}`,
+  next: (when: string) => `Prochaine : ${when}`,
+  noNext: "Aucune publication à venir",
+  resume: "Reprendre",
+  resumeHint: (step: number) => `Étape ${step} sur 4`,
+  open: "Ouvrir",
+  menu: {
+    rename: "Renommer",
+    duplicate: "Dupliquer…",
+    archive: "Archiver",
+    unarchive: "Désarchiver",
+    delete: "Supprimer…",
+  },
+  renamed: "Campagne renommée.",
+  archived: (name: string) => `« ${name} » est archivée.`,
+  unarchived: (name: string) => `« ${name} » est de retour dans vos campagnes.`,
+  duplicate: {
+    title: "Dupliquer la campagne",
+    description:
+      "Une copie en brouillon est créée avec ses contenus et ses posts. Les posts repassent en brouillon.",
+    shift: "Décaler les dates à partir du…",
+    shiftHint:
+      "Nouveau lundi de la semaine 1. Chaque post est décalé d'autant de jours, à la même heure.",
+    shiftNone: "Laissez vide pour garder les mêmes dates.",
+    notMonday:
+      "Cette date n'est pas un lundi : les posts seront quand même décalés du même nombre de jours.",
+    submit: "Dupliquer",
+    done: (name: string) => `« ${name} » a été créée.`,
+    openCopy: "Ouvrir la copie",
+  },
+  delete: {
+    title: (name: string) => `Supprimer « ${name} » définitivement ?`,
+    body: "La campagne, ses contenus et ses posts seront supprimés. Cette action est irréversible.",
+    submit: "Supprimer définitivement",
+    done: "Campagne supprimée.",
+  },
+  empty: {
+    title: "Votre première campagne vous attend",
+    body: "Créez une campagne pour planifier vos publications LinkedIn et YouTube sur un calendrier.",
+  },
+  emptyFiltered: {
+    title: "Aucune campagne ici",
+    body: "Aucune campagne ne correspond à ce filtre ou à cette recherche.",
+    reset: "Voir toutes les campagnes",
+  },
+  inlineRename: {
+    label: "Nom de la campagne",
+    hint: "Entrée pour valider, Échap pour annuler",
+  },
+} as const;
