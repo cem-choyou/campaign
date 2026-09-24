@@ -33,7 +33,14 @@ let client: Anthropic | null = null;
 
 function getClient(): Anthropic {
   if (!env.ANTHROPIC_API_KEY) throw new AppError("UNAVAILABLE", aiCopy.errors.notConfigured);
-  client ??= new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 2, timeout: 120_000 });
+  client ??= new Anthropic({
+    apiKey: env.ANTHROPIC_API_KEY,
+    maxRetries: 2,
+    timeout: 120_000,
+    defaultHeaders: env.ANTHROPIC_WORKSPACE_ID
+      ? { "anthropic-workspace-id": env.ANTHROPIC_WORKSPACE_ID }
+      : undefined,
+  });
   return client;
 }
 

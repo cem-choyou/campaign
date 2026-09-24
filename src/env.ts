@@ -29,6 +29,8 @@ const schema = z.object({
 
   /** Optional at startup: AI features explain themselves when it is missing. */
   ANTHROPIC_API_KEY: optional,
+  /** Only for an organization key not scoped to a workspace (sent as anthropic-workspace-id). */
+  ANTHROPIC_WORKSPACE_ID: optional,
   AI_MODEL: z.string().trim().min(1).default("claude-sonnet-5"),
   AI_DAILY_LIMIT_PER_BRAND: z.coerce.number().int().positive().default(300),
   /** "mock" returns canned texts instead of calling the model (local e2e only, never in production). */
