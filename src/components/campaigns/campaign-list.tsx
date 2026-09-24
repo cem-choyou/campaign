@@ -240,7 +240,7 @@ export function CampaignList({
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       {/* Toolbar */}
       <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center">
         <nav
@@ -313,7 +313,7 @@ export function CampaignList({
           }
         />
       ) : view === "cards" ? (
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {visible.map((c) => {
             const resumable = hrefFor(c).endsWith("/assistant");
             return (

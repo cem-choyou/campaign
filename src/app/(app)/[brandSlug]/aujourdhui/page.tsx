@@ -128,7 +128,7 @@ export default async function TodayPage({ params }: { params: Promise<{ brandSlu
           )}
         </section>
 
-        <div className="grid content-start gap-4">
+        <div className="grid grid-cols-[minmax(0,1fr)] content-start gap-4">
           <section
             className="bg-card rounded-xl border p-4 sm:p-5"
             aria-labelledby="attention-title"
@@ -176,7 +176,7 @@ export default async function TodayPage({ params }: { params: Promise<{ brandSlu
             {data.campaigns.length === 0 ? (
               <p className="text-muted-foreground text-sm">{todayCopy.campaigns.empty}</p>
             ) : (
-              <ul className="grid gap-3">
+              <ul className="grid grid-cols-[minmax(0,1fr)] gap-3">
                 {data.campaigns.map((c) => {
                   const resume = c.status === "DRAFT" && c.wizardStep < WIZARD_DONE;
                   return (
