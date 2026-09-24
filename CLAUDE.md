@@ -887,9 +887,9 @@ Listes déroulantes : Jour, Compte, Format, ID contenu, Type ; Mode = `Auto | St
 3. Adresse Gmail utilisée par n8n pour les e-mails aux relais (ex. `campaign@choyou.fr`). — lot 3
 4. Qui reçoit le kit pour publier sur la page IT for Business en attendant le lot 4. — lot 3
 5. E-mail d'Anne Laure et liste des autres relais. — lot 3
-6. Heure d'envoi J-1 (18:00 par défaut) et heure de publication par défaut (09:00). — lot 2
+6. ~~Heure d'envoi J-1 (18:00 par défaut) et heure de publication par défaut (09:00).~~ **Décidé (24/09/2026)** : 18:00 et 09:00.
 7. Logo et couleur d'IT for Business. — lot 1
-8. Modèle IA : rester sur `gpt-4o-mini` ou passer sur Claude pour la rédaction. — lot 2
+8. ~~Modèle IA : rester sur `gpt-4o-mini` ou passer sur Claude pour la rédaction.~~ **Décidé (24/09/2026)** : Claude Sonnet 5 (`claude-sonnet-5`), clé `ANTHROPIC_API_KEY`. Le code reste indépendant du fournisseur.
 
 ---
 
@@ -913,8 +913,8 @@ RESEND_API_KEY=
 EMAIL_FROM="Campaign · ChoYou <campaign@choyou.fr>"
 
 # IA
-OPENAI_API_KEY=
-AI_MODEL=gpt-4o-mini
+ANTHROPIC_API_KEY=
+AI_MODEL=claude-sonnet-5
 AI_DAILY_LIMIT_PER_BRAND=300
 
 # n8n
@@ -1018,4 +1018,4 @@ tests/   unit/  e2e/  fixtures/ (plan LDDLT d'origine + modèle)  screenshots/
 6. Informations des mentions légales (`src/lib/copy/legal.ts`, valeurs « à compléter »).
 Puis : déploiement selon `deploy/RUNBOOK.md`, vérification HTTPS/en-têtes, connexion Google réelle, parcours complet en production.
 
-**Points ouverts restants** (§16) : 3, 4, 5 (lot 3), 6 et 8 (lot 2). Anne Laure est seedée avec l'adresse provisoire `anne-laure@example.invalid`.
+**Points ouverts restants** (§16) : 3, 4, 5 (lot 3). Les points 6 et 8 sont tranchés (24/09/2026). Anne Laure est seedée avec l'adresse provisoire `anne-laure@example.invalid`.
