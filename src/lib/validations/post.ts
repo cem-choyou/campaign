@@ -70,6 +70,8 @@ export const postUpdateSchema = z.object({
   relatedVideoAdded: z.boolean().optional(),
   /** Explicit consent to send an approved post back to draft (§6.3). */
   confirmReset: z.boolean().optional(),
+  /** Set when the saved text is an AI proposal used as is (bodySource = AI). */
+  aiTask: z.enum(["post.write", "post.variant", "post.rewrite", "post.youtube"]).optional(),
 });
 
 export const postMoveSchema = z.object({

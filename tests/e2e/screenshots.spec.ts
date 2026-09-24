@@ -16,6 +16,8 @@ type Screen = {
   path: string | ((page: Page) => Promise<string>);
   anonymous?: boolean;
   cookies?: Record<string, string>;
+  /** Interaction before the capture (e.g. open a panel). */
+  prepare?: (page: Page) => Promise<void>;
 };
 
 async function demoCampaignPath(page: Page) {
@@ -49,6 +51,20 @@ const SCREENS: Screen[] = [
   },
   { name: "07-planning-liste", path: demoCampaignPath, cookies: { "planning-mode": "list" } },
   { name: "08-editeur-post", path: firstPostPath },
+  {
+    name: "08b-editeur-ia",
+    path: firstPostPath,
+    prepare: async (page) => {
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("button", { name: "Générer 3 propositions" }).click();
+      for (const n of [1, 2, 3]) {
+        await expect(
+          dialog.getByRole("article", { name: `Proposition ${n}` }).getByRole("button"),
+        ).toBeEnabled();
+      }
+      await dialog.getByRole("region", { name: "Rédiger avec l'IA" }).scrollIntoViewIfNeeded();
+    },
+  },
   { name: "09-contenus", path: async (p) => `${await demoCampaignPath(p)}/contenus` },
   { name: "10-activite", path: async (p) => `${await demoCampaignPath(p)}/activite` },
   { name: "11-reglages-campagne", path: async (p) => `${await demoCampaignPath(p)}/reglages` },
@@ -84,6 +100,7 @@ for (const screen of SCREENS) {
         const path = typeof screen.path === "string" ? screen.path : await screen.path(page);
         await page.goto(path);
         await page.waitForLoadState("networkidle");
+        if (screen.prepare) await screen.prepare(page);
         await page.waitForTimeout(300);
         const overflow = await page.evaluate(
           () => document.documentElement.scrollWidth - window.innerWidth,

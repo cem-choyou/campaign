@@ -1,6 +1,5 @@
 import "server-only";
 import { z } from "zod";
-import { env } from "@/env";
 import { LIMITS, isComplete, isLocked, type PostFormat, type PostStatus } from "@/lib/posts";
 import { db } from "@/server/db";
 import { AppError } from "@/server/errors";
@@ -16,6 +15,7 @@ import {
   youtubeMetaPrompt,
 } from "./prompt";
 import { consumeAi } from "./quota";
+import { aiPromptRecord } from "./record";
 
 // AI operations on a post (§8.7, §10). Callers check `campaign.edit` first.
 
@@ -111,11 +111,6 @@ export async function suggestYoutubeMeta(
       15,
     ),
   };
-}
-
-/** What `Post.aiPromptUsed` keeps: enough to understand where a text came from. */
-export function aiPromptRecord(task: AiTask, extra: Record<string, unknown> = {}) {
-  return { task, model: env.AI_MODEL, at: new Date().toISOString(), ...extra };
 }
 
 /**

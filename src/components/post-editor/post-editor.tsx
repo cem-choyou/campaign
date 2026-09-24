@@ -70,6 +70,7 @@ import {
   publisherOf,
 } from "@/lib/posts";
 import { cn } from "@/lib/utils";
+import { type AiTask, AiTextPanel, AiYoutubePanel, type YoutubeMeta } from "./ai-panel";
 import { LinkedInPreview, YouTubePreview } from "./previews";
 
 const copy = editorCopy;
@@ -271,18 +272,29 @@ function EditorBody({
   const [pendingChange, setPendingChange] = useState<Partial<Values> | null>(null);
   const [busy, startTransition] = useTransition();
   const saved = useRef(initial);
+  /** Last AI proposal applied: saved with `aiTask` only if the text is still exactly that. */
+  const aiApplied = useRef<{ task: AiTask; body?: string; youtubeTitle?: string } | null>(null);
   const readOnly = !canEdit || isLocked(status);
 
   const save = async (next: Values) => {
     const patch = toPatch(next, saved.current);
     if (Object.keys(patch).length === 0) return { ok: true as const };
+    const ai = aiApplied.current;
+    const aiTask =
+      ai &&
+      ((ai.body !== undefined && patch.body === ai.body) ||
+        (ai.youtubeTitle !== undefined && patch.youtubeTitle === ai.youtubeTitle))
+        ? ai.task
+        : undefined;
     const result = await updatePostAction({
       postId: post.id,
       ...patch,
       confirmReset: confirmedReset,
+      aiTask,
     });
     if (result.ok) {
       saved.current = next;
+      if (aiTask || patch.body !== undefined) aiApplied.current = null;
       setStatus(result.data.status as PostStatus);
       onRefresh();
     }
@@ -311,6 +323,20 @@ function EditorBody({
       return;
     }
     setValues((v) => ({ ...v, ...patch }));
+  };
+
+  const applyAiText = (text: string, task: AiTask) => {
+    aiApplied.current = { task, body: text };
+    change({ body: text });
+  };
+
+  const applyAiYoutube = (meta: YoutubeMeta) => {
+    aiApplied.current = { task: "post.youtube", youtubeTitle: meta.title };
+    change({
+      youtubeTitle: meta.title,
+      youtubeDescription: meta.description,
+      youtubeTags: meta.tags.join(", "),
+    });
   };
 
   const index = orderedIds.indexOf(post.id);
@@ -576,6 +602,17 @@ function EditorBody({
             </div>
           )}
 
+          {!isYouTube && !readOnly && (
+            <AiTextPanel
+              postId={post.id}
+              timezone={timezone}
+              flush={flush}
+              body={values.body}
+              onUse={applyAiText}
+              onRestore={(text) => change({ body: text })}
+            />
+          )}
+
           {isYouTube && (
             <>
               <div className="grid gap-1.5">
@@ -619,6 +656,9 @@ function EditorBody({
                   />
                 )}
               </Field>
+              {!readOnly && (
+                <AiYoutubePanel postId={post.id} flush={flush} onUse={applyAiYoutube} />
+              )}
               <Field label={copy.fields.linkTo} hint={copy.fields.linkToHint}>
                 {(p) => (
                   <Select
@@ -663,30 +703,33 @@ function EditorBody({
           className="bg-muted/40 border-t p-4 sm:p-6 @[52rem]:border-t-0 @[52rem]:border-l"
           aria-label={copy.preview.title}
         >
-          <p className="text-muted-foreground mb-3 text-xs font-medium tracking-wide uppercase">
-            {copy.preview.title}
-          </p>
-          {isYouTube ? (
-            <YouTubePreview
-              channel={account?.name ?? brand.name}
-              title={values.youtubeTitle}
-              description={values.youtubeDescription}
-              isShort={values.format === "SHORT"}
-              media={media}
-            />
-          ) : (
-            <LinkedInPreview
-              author={{
-                name: authorName,
-                subtitle: account ? brand.name : copy.preview.personalProfile,
-                isPage: !!account,
-              }}
-              body={values.body}
-              media={media}
-              brandColor={brand.color}
-              logoUrl={brand.logoUrl}
-            />
-          )}
+          {/* Stays in view while the fields and AI proposals scroll (wide layout). */}
+          <div className="@[52rem]:sticky @[52rem]:top-0">
+            <p className="text-muted-foreground mb-3 text-xs font-medium tracking-wide uppercase">
+              {copy.preview.title}
+            </p>
+            {isYouTube ? (
+              <YouTubePreview
+                channel={account?.name ?? brand.name}
+                title={values.youtubeTitle}
+                description={values.youtubeDescription}
+                isShort={values.format === "SHORT"}
+                media={media}
+              />
+            ) : (
+              <LinkedInPreview
+                author={{
+                  name: authorName,
+                  subtitle: account ? brand.name : copy.preview.personalProfile,
+                  isPage: !!account,
+                }}
+                body={values.body}
+                media={media}
+                brandColor={brand.color}
+                logoUrl={brand.logoUrl}
+              />
+            )}
+          </div>
         </aside>
       </div>
 

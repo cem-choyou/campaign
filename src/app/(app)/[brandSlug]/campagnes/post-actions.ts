@@ -11,6 +11,7 @@ import {
   postShiftSchema,
   postUpdateSchema,
 } from "@/lib/validations/post";
+import { suggestYoutubeMeta } from "@/server/ai/posts";
 import { db } from "@/server/db";
 import { AppError, runAction } from "@/server/errors";
 import { requireBrandPermission, requireCampaignPermission } from "@/server/permissions";
@@ -19,6 +20,7 @@ import {
   createPost,
   deletePosts,
   getPostForEditor,
+  listPostVersions,
   movePost,
   restorePostDates,
   restorePosts,
@@ -122,7 +124,24 @@ export async function cancelPostAction(input: z.input<typeof cancelSchema>) {
   });
 }
 
-const loadSchema = z.object({ postId: id });
+const postIdSchema = z.object({ postId: id });
+
+/** Title, description and tags proposed by the AI for a YouTube post (not saved until used). */
+export async function suggestYoutubeMetaAction(input: z.input<typeof postIdSchema>) {
+  return runAction(postIdSchema, input, async (data) => {
+    const access = await requirePostPermission(data.postId);
+    return suggestYoutubeMeta(data.postId, { userId: access.user.id, brandId: access.brand.id });
+  });
+}
+
+export async function listPostVersionsAction(input: z.input<typeof postIdSchema>) {
+  return runAction(postIdSchema, input, async (data) => {
+    await requirePostPermission(data.postId);
+    return listPostVersions(data.postId);
+  });
+}
+
+const loadSchema = postIdSchema;
 
 /** Loads one post for the editor panel (J/K navigation). */
 export async function loadPostAction(input: z.input<typeof loadSchema>) {

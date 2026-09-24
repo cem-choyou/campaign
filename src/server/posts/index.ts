@@ -11,7 +11,9 @@ import {
   isLocked,
   touchesApprovedContent,
 } from "@/lib/posts";
+import { type LatestVersion, type VersionSource, planVersions } from "@/lib/post-versions";
 import type { postCreateSchema, postMoveSchema, postUpdateSchema } from "@/lib/validations/post";
+import { aiPromptRecord } from "@/server/ai/record";
 import { db } from "@/server/db";
 import { AppError } from "@/server/errors";
 
@@ -115,6 +117,31 @@ export async function getPostOptions(campaignId: string, brandId: string) {
 }
 
 export type PostOptions = Awaited<ReturnType<typeof getPostOptions>>;
+
+/** Latest text versions of a post, newest first (editor history). */
+export async function listPostVersions(postId: string) {
+  const versions = await db.postVersion.findMany({
+    where: { postId },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: { id: true, body: true, source: true, createdAt: true, createdById: true },
+  });
+  const authorIds = [...new Set(versions.flatMap((v) => (v.createdById ? [v.createdById] : [])))];
+  const authors = await db.user.findMany({
+    where: { id: { in: authorIds } },
+    select: { id: true, name: true, email: true },
+  });
+  const nameOf = new Map(authors.map((a) => [a.id, a.name ?? a.email]));
+  return versions.map((v) => ({
+    id: v.id,
+    body: v.body,
+    source: v.source as "AI" | "HUMAN" | "IMPORTED",
+    createdAt: v.createdAt.toISOString(),
+    author: v.createdById ? (nameOf.get(v.createdById) ?? null) : null,
+  }));
+}
+
+export type PostVersionItem = Awaited<ReturnType<typeof listPostVersions>>[number];
 
 // ---------- Helpers ----------
 
@@ -221,6 +248,8 @@ export async function updatePost(input: z.output<typeof postUpdateSchema>, actor
       format: true,
       scheduledAt: true,
       deletedAt: true,
+      body: true,
+      bodySource: true,
       socialAccountId: true,
       authorContributorId: true,
       socialAccount: { select: { platform: true } },
@@ -236,7 +265,7 @@ export async function updatePost(input: z.output<typeof postUpdateSchema>, actor
     );
   }
 
-  const { postId, confirmReset, date, time, publisher, ...fields } = input;
+  const { postId, confirmReset, date, time, publisher, aiTask, ...fields } = input;
   const data: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(fields)) if (value !== undefined) data[key] = value;
 
@@ -267,13 +296,56 @@ export async function updatePost(input: z.output<typeof postUpdateSchema>, actor
       data.scheduledAt = scheduledAt;
     }
   }
-  if (fields.body !== undefined) data.bodySource = fields.body ? "HUMAN" : "EMPTY";
+  const textChanged =
+    fields.body !== undefined ||
+    fields.youtubeTitle !== undefined ||
+    fields.youtubeDescription !== undefined;
+  if (fields.body !== undefined) {
+    data.bodySource = !fields.body ? "EMPTY" : aiTask ? "AI" : "HUMAN";
+  } else if (aiTask && textChanged) {
+    data.bodySource = "AI"; // YouTube title / description proposal
+  }
+  if (aiTask && textChanged) data.aiPromptUsed = aiPromptRecord(aiTask);
   if (resets) Object.assign(data, { status: "DRAFT", approvedById: null, approvedAt: null });
 
-  const updated = await db.post.update({
-    where: { id: postId },
-    data,
-    select: { id: true, status: true, scheduledAt: true, updatedAt: true },
+  const updated = await db.$transaction(async (tx) => {
+    const row = await tx.post.update({
+      where: { id: postId },
+      data,
+      select: { id: true, status: true, scheduledAt: true, updatedAt: true },
+    });
+    if (fields.body !== undefined) {
+      const latest = await tx.postVersion.findFirst({
+        where: { postId },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, source: true, createdById: true, createdAt: true, body: true },
+      });
+      const steps = planVersions({
+        latest: latest as LatestVersion | null,
+        previous: { body: post.body, source: post.bodySource as "EMPTY" | VersionSource },
+        next: { body: fields.body, source: aiTask ? "AI" : "HUMAN" },
+        actorId: actor.id,
+      });
+      for (const step of steps) {
+        if (step.kind === "update") {
+          await tx.postVersion.update({
+            where: { id: step.id },
+            data: { body: step.body, createdAt: new Date() },
+          });
+        } else {
+          await tx.postVersion.create({
+            data: {
+              postId,
+              body: step.body,
+              source: step.source,
+              createdById: actor.id,
+              ...(step.at ? { createdAt: step.at } : {}),
+            },
+          });
+        }
+      }
+    }
+    return row;
   });
   if (resets) {
     await db.activity.create({
