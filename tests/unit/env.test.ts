@@ -21,6 +21,8 @@ describe("parseEnv", () => {
     const env = parseEnv({ ...valid, RESEND_API_KEY: "" });
     expect(env.ALLOWED_GOOGLE_DOMAIN).toBe("choyou.fr");
     expect(env.AI_DAILY_LIMIT_PER_BRAND).toBe(300);
+    expect(env.AI_MODEL).toBe("claude-sonnet-5");
+    expect(env.AI_TRANSPORT).toBe("anthropic");
     expect(env.RESEND_API_KEY).toBeUndefined();
   });
 

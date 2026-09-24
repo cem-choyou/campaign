@@ -27,9 +27,12 @@ const schema = z.object({
   /** "log" prints e-mails instead of sending them (local e2e only, never in production). */
   EMAIL_TRANSPORT: z.enum(["resend", "log"]).default("resend"),
 
-  OPENAI_API_KEY: optional,
-  AI_MODEL: z.string().default("gpt-4o-mini"),
+  /** Optional at startup: AI features explain themselves when it is missing. */
+  ANTHROPIC_API_KEY: optional,
+  AI_MODEL: z.string().trim().min(1).default("claude-sonnet-5"),
   AI_DAILY_LIMIT_PER_BRAND: z.coerce.number().int().positive().default(300),
+  /** "mock" returns canned texts instead of calling the model (local e2e only, never in production). */
+  AI_TRANSPORT: z.enum(["anthropic", "mock"]).default("anthropic"),
 
   N8N_API_TOKEN: optional,
   N8N_VALIDATION_WEBHOOK_URL: optional,
@@ -54,4 +57,7 @@ export const env = parseEnv(process.env);
 
 if (env.EMAIL_TRANSPORT === "log" && env.AUTH_URL.startsWith("https://")) {
   throw new Error("EMAIL_TRANSPORT=log est réservé aux tests locaux (AUTH_URL en https).");
+}
+if (env.AI_TRANSPORT === "mock" && env.AUTH_URL.startsWith("https://")) {
+  throw new Error("AI_TRANSPORT=mock est réservé aux tests locaux (AUTH_URL en https).");
 }
