@@ -1,8 +1,11 @@
 import { importCopy } from "@/lib/copy/import";
+import { formatDateOnly, nextMonday, todayLocal } from "@/lib/dates";
+import { suggestMapping } from "@/server/ai/import";
+import { db } from "@/server/db";
 import { AppError } from "@/server/errors";
 import { assertSameOrigin, errorResponse } from "@/server/http";
-import { createImportJob, previewImport } from "@/server/import";
-import { isTemplate, parseTemplate, readWorkbook } from "@/server/import/parse";
+import { type GridPayload, createImportJob, mappingView, previewImport } from "@/server/import";
+import { isTemplate, parseTemplate, readGrid, readWorkbook } from "@/server/import/parse";
 import { logger } from "@/server/logger";
 import { requireBrandPermission, requireCampaignPermission } from "@/server/permissions";
 import { rateLimit } from "@/server/rate-limit";
@@ -10,6 +13,15 @@ import { rateLimit } from "@/server/rate-limit";
 export const dynamic = "force-dynamic";
 
 const MAX_BYTES = 5 * 1024 * 1024;
+
+/** « plan-lddlt_original.xlsx » → « Plan lddlt original ». */
+function campaignNameFromFile(fileName: string) {
+  const name = fileName
+    .replace(/\.xlsx$/i, "")
+    .replace(/[_-]+/g, " ")
+    .trim();
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
 
 // Upload of an Excel file (§8.8 steps 1-2). A route rather than a Server Action: actions are
 // limited to 1 MB of body. Returns the job id and, for the template, the preview.
@@ -43,7 +55,37 @@ export async function POST(request: Request) {
     }
 
     if (!isTemplate(workbook)) {
-      throw new AppError("INVALID", importCopy.errors.notTemplate);
+      // Free-form file: propose a column mapping (AI, heuristic fallback) to confirm.
+      const grid = readGrid(workbook);
+      if (!grid || grid.rows.length === 0) throw new AppError("INVALID", importCopy.errors.empty);
+      const { mapping, source } = await suggestMapping(grid, access.brand, access.user.id);
+      const payload: GridPayload = { kind: "grid", grid, mapping, source };
+      const job = await createImportJob({
+        brandId,
+        campaignId,
+        fileName: file.name,
+        parsed: null,
+        payload,
+        status: "NEEDS_MAPPING",
+        actor: access.user,
+      });
+      const existing = campaignId
+        ? await db.campaign.findUnique({
+            where: { id: campaignId },
+            select: { name: true, startDate: true },
+          })
+        : null;
+      return Response.json({
+        jobId: job.id,
+        status: "NEEDS_MAPPING",
+        fileName: file.name,
+        mapping: mappingView(payload, {
+          name: existing?.name ?? campaignNameFromFile(file.name),
+          startDate: existing?.startDate
+            ? formatDateOnly(existing.startDate)
+            : nextMonday(todayLocal(access.brand.timezone)),
+        }),
+      });
     }
     const parsed = parseTemplate(workbook);
     const job = await createImportJob({

@@ -73,12 +73,35 @@ test("corriger les erreurs d'un fichier sur place", async ({ asAdmin: page }, in
   await expect(page.getByText("18 posts créés.")).toBeVisible();
 });
 
-test("un fichier qui ne suit pas le modèle est expliqué", async ({ asAdmin: page }, info) => {
-  const file = info.outputPath("libre.xlsx");
+test("importer le plan LDDLT d'origine (Excel libre) avec la correspondance des colonnes", async ({
+  asAdmin: page,
+}) => {
+  await page.goto(`${BRAND}/campagnes/importer`);
+  await page
+    .getByLabel("Choisir un fichier")
+    .setInputFiles("tests/fixtures/plan-lddlt-original.xlsx");
+  await expect(
+    page.getByRole("heading", { name: "À quoi correspond chaque colonne ?" }),
+  ).toBeVisible();
+  // « Format » holds « Capsule 1 » / « Short 1 (…) »: mapped to the content.
+  await expect(page.getByRole("combobox", { name: "Format : Correspond à" })).toHaveText("Contenu");
+  await expect(page.getByRole("combobox", { name: "Canal : Correspond à" })).toHaveText("Réseau");
+  await expectAccessible(page, "import : correspondance des colonnes");
+
+  await page.getByLabel("Nom de la campagne").fill("LDDLT depuis l'Excel d'origine");
+  await page.getByRole("button", { name: "Continuer vers l'aperçu" }).click();
+  await expect(page.getByText("Tout est prêt.")).toBeVisible();
+  await expect(page.getByText("13 contenus · 18 posts · 6 missions relais")).toBeVisible();
+  await page.getByRole("button", { name: "Créer 18 posts" }).click();
+  await expect(page.getByText("18 posts créés.")).toBeVisible();
+});
+
+test("un fichier sans planning est expliqué", async ({ asAdmin: page }, info) => {
+  const file = info.outputPath("vide.xlsx");
   const wb = new ExcelJS.Workbook();
   wb.addWorksheet("Feuille 1").addRow(["Quelque chose", "Autre"]);
   await wb.xlsx.writeFile(file);
   await page.goto(`${BRAND}/campagnes/importer`);
   await page.getByLabel("Choisir un fichier").setInputFiles(file);
-  await expect(page.getByText(/ne suit pas le modèle Campaign/)).toBeVisible();
+  await expect(page.getByText(/Aucune ligne de planning trouvée/)).toBeVisible();
 });

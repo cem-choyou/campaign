@@ -1,10 +1,18 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { formatDateOnly } from "@/lib/dates";
+import {
+  type Grid,
+  type Mapping,
+  type MappingField,
+  buildFreeWorkbook,
+  distinctValues,
+} from "@/lib/import/free";
 import type { ContentType } from "@/lib/import/normalize";
 import { type BrandData, resolveImport } from "@/lib/import/resolve";
 import type { ImportPreview, Overrides, ParsedWorkbook, PreviewChoices } from "@/lib/import/types";
 import { extractYoutubeId } from "@/lib/youtube";
+import { interpretValues } from "@/server/ai/import";
 import { db } from "@/server/db";
 import { AppError } from "@/server/errors";
 
@@ -136,14 +144,108 @@ export async function getImportJob(jobId: string, brandId: string, actor: Actor)
   return job;
 }
 
+/** Payload of a free-form file: the grid, the mapping, and once confirmed the parsed workbook. */
+export type GridPayload = {
+  kind: "grid";
+  grid: Grid;
+  mapping: Mapping;
+  source: "ai" | "heuristic";
+  parsed?: ParsedWorkbook;
+};
+
+function isGridPayload(payload: unknown): payload is GridPayload {
+  return !!payload && typeof payload === "object" && (payload as GridPayload).kind === "grid";
+}
+
+function parsedOf(payload: unknown): ParsedWorkbook | null {
+  const parsed = isGridPayload(payload) ? payload.parsed : (payload as ParsedWorkbook | null);
+  return parsed && Array.isArray(parsed.rows) ? parsed : null;
+}
+
+/** What the « correspondance des colonnes » step shows. */
+export function mappingView(
+  payload: GridPayload,
+  defaults: { name: string; startDate: string | null },
+) {
+  return {
+    sheet: payload.grid.sheet,
+    headers: payload.grid.headers,
+    samples: payload.grid.rows.slice(0, 5).map((r) => r.cells),
+    rowCount: payload.grid.rows.length,
+    mapping: payload.mapping,
+    source: payload.source,
+    defaults,
+  };
+}
+
+export type MappingView = ReturnType<typeof mappingView>;
+
+/** Mapping confirmed: interprets the values (AI, with heuristic fallback) and parses the grid. */
+export async function confirmMapping(input: {
+  jobId: string;
+  brand: { id: string; timezone: string };
+  mapping: Mapping;
+  name: string;
+  startDate: string | null;
+  canCreateContributors: boolean;
+  actor: Actor;
+}) {
+  const job = await getImportJob(input.jobId, input.brand.id, input.actor);
+  if (!isGridPayload(job.payload)) throw new AppError("CONFLICT");
+  const { grid } = job.payload;
+  if (input.mapping.length !== grid.headers.length) throw new AppError("INVALID");
+  const has = (field: MappingField) => input.mapping.includes(field);
+  if (!has("account")) {
+    throw new AppError("INVALID", "Indiquez la colonne du compte qui publie.");
+  }
+  if (!has("date") && !(has("week") && has("day"))) {
+    throw new AppError(
+      "INVALID",
+      "Indiquez la colonne de la date, ou celles de la semaine et du jour.",
+    );
+  }
+  if (!has("date") && !input.startDate && !job.campaignId) {
+    throw new AppError("INVALID", "Indiquez la date du lundi de la semaine 1.");
+  }
+
+  const brand = await loadBrandData(input.brand.id, job.campaignId, input.canCreateContributors);
+  const publishers = [
+    ...brand.accounts.map((a) => ({ name: a.name, platform: a.platform })),
+    ...brand.contributors.map((p) => ({
+      name: `${p.firstName} ${p.lastName ?? ""}`.trim(),
+      platform: "LINKEDIN" as const,
+    })),
+  ];
+  const { interpretation } = await interpretValues(
+    distinctValues(grid, input.mapping),
+    publishers,
+    input.brand,
+    input.actor.id,
+  );
+  const parsed = buildFreeWorkbook(grid, input.mapping, interpretation, {
+    name: input.name,
+    startDate: input.startDate,
+  });
+  await db.importJob.update({
+    where: { id: job.id },
+    data: {
+      status: "PARSED",
+      mapping: { columns: input.mapping } as object,
+      payload: { ...job.payload, mapping: input.mapping, parsed } as object,
+    },
+  });
+  const preview = resolveImport(parsed, brand, {});
+  return { preview, choices: previewChoices(brand, preview) };
+}
+
 export async function previewImport(
   job: { campaignId: string | null; payload: unknown },
   brandId: string,
   overrides: Overrides,
   canCreateContributors: boolean,
 ) {
-  const parsed = job.payload as ParsedWorkbook | null;
-  if (!parsed || !Array.isArray(parsed.rows)) {
+  const parsed = parsedOf(job.payload);
+  if (!parsed) {
     throw new AppError("CONFLICT", "La correspondance des colonnes n'est pas encore confirmée.");
   }
   const brand = await loadBrandData(brandId, job.campaignId, canCreateContributors);

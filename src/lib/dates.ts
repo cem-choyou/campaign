@@ -144,3 +144,8 @@ export function mondayOf(date: string): string {
   const offset = (d.getUTCDay() + 6) % 7;
   return formatDateOnly(addDays(d, -offset));
 }
+
+/** The first Monday strictly after `date` ("yyyy-MM-dd"). */
+export function nextMonday(date: string): string {
+  return formatDateOnly(addDays(parseDateOnly(mondayOf(date)), 7));
+}

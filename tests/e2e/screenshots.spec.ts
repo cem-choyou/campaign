@@ -84,6 +84,16 @@ const SCREENS: Screen[] = [
   { name: "17-invitation-invalide", path: "/invitation/lien-expire", anonymous: true },
   { name: "21-import-depot", path: `${BRAND}/campagnes/importer` },
   {
+    name: "21b-import-correspondance",
+    path: `${BRAND}/campagnes/importer`,
+    prepare: async (page) => {
+      await page
+        .getByLabel("Choisir un fichier")
+        .setInputFiles("tests/fixtures/plan-lddlt-original.xlsx");
+      await expect(page.getByRole("button", { name: "Continuer vers l'aperçu" })).toBeVisible();
+    },
+  },
+  {
     name: "22-import-apercu",
     path: `${BRAND}/campagnes/importer`,
     prepare: async (page) => {

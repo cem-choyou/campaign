@@ -14,11 +14,18 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { importCopy } from "@/lib/copy/import";
 import type { ImportPreview, Overrides, PreviewChoices, RowOverride } from "@/lib/import/types";
 import { cn } from "@/lib/utils";
+import type { MappingView } from "@/server/import";
 import { PreviewCalendar, PreviewSummary, PreviewTable } from "./import-preview";
+import { MappingStep } from "./mapping-step";
 
 const copy = importCopy;
 
 type Loaded = { jobId: string; fileName: string; preview: ImportPreview; choices: PreviewChoices };
+type Mapped = { jobId: string; fileName: string; view: MappingView };
+type UploadResult =
+  | { error: string }
+  | ({ status: "PARSED" } & Loaded)
+  | { status: "NEEDS_MAPPING"; jobId: string; fileName: string; mapping: MappingView };
 type Done = { campaignId: string; created: number; skipped: number; replaced: number };
 
 export function ImportFlow({
@@ -32,6 +39,7 @@ export function ImportFlow({
   onDone?: (done: Done) => React.ReactNode;
 }) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [mapping, setMapping] = useState<Mapped | null>(null);
   const [overrides, setOverrides] = useState<Overrides>({});
   const [mode, setMode] = useState<"add" | "replace">("add");
   const [done, setDone] = useState<Done | null>(null);
@@ -50,14 +58,19 @@ export function ImportFlow({
       form.set("brandId", brand.id);
       if (campaign) form.set("campaignId", campaign.id);
       const response = await fetch("/api/import", { method: "POST", body: form });
-      const payload = (await response.json().catch(() => null)) as
-        (Loaded & { error?: string }) | null;
-      if (!response.ok || !payload || payload.error) {
-        toast.error(payload?.error ?? copy.errors.network);
+      const payload = (await response.json().catch(() => null)) as UploadResult | null;
+      if (!response.ok || !payload || "error" in payload) {
+        toast.error((payload && "error" in payload && payload.error) || copy.errors.network);
         return;
       }
       setOverrides({});
-      setLoaded(payload);
+      if (payload.status === "NEEDS_MAPPING") {
+        setMapping({ jobId: payload.jobId, fileName: payload.fileName, view: payload.mapping });
+        setLoaded(null);
+      } else {
+        setMapping(null);
+        setLoaded(payload);
+      }
     } catch {
       toast.error(copy.errors.network);
     } finally {
@@ -138,6 +151,23 @@ export function ImportFlow({
     );
   }
 
+  if (!loaded && mapping) {
+    return (
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
+        <FileBar fileName={mapping.fileName} onRestart={() => setMapping(null)} busy={false} />
+        <MappingStep
+          brandId={brand.id}
+          jobId={mapping.jobId}
+          view={mapping.view}
+          existingCampaign={!!campaign}
+          onConfirmed={(result) => {
+            setLoaded({ jobId: mapping.jobId, fileName: mapping.fileName, ...result });
+          }}
+        />
+      </div>
+    );
+  }
+
   if (!loaded) {
     return <DropZone brandSlug={brand.slug} uploading={uploading} onFile={(f) => void upload(f)} />;
   }
@@ -146,24 +176,15 @@ export function ImportFlow({
   const blocked = preview.counts.errors > 0 || preview.counts.posts === 0;
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
-      <div className="flex flex-wrap items-center gap-2">
-        <FileSpreadsheet className="text-muted-foreground size-4" aria-hidden />
-        <span className="min-w-0 truncate text-sm font-medium">{loaded.fileName}</span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setLoaded(null);
-            setOverrides({});
-          }}
-        >
-          {copy.restart}
-        </Button>
-        {refreshing && (
-          <Loader2 className="text-muted-foreground size-4 animate-spin" aria-hidden />
-        )}
-      </div>
+      <FileBar
+        fileName={loaded.fileName}
+        busy={refreshing}
+        onRestart={() => {
+          setLoaded(null);
+          setMapping(null);
+          setOverrides({});
+        }}
+      />
 
       <PreviewSummary preview={preview} />
 
@@ -221,6 +242,27 @@ export function ImportFlow({
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function FileBar({
+  fileName,
+  busy,
+  onRestart,
+}: {
+  fileName: string;
+  busy: boolean;
+  onRestart: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <FileSpreadsheet className="text-muted-foreground size-4" aria-hidden />
+      <span className="min-w-0 truncate text-sm font-medium">{fileName}</span>
+      <Button type="button" variant="ghost" size="sm" onClick={onRestart}>
+        {copy.restart}
+      </Button>
+      {busy && <Loader2 className="text-muted-foreground size-4 animate-spin" aria-hidden />}
     </div>
   );
 }

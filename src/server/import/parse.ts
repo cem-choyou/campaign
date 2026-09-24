@@ -14,6 +14,7 @@ import {
   parseWeek,
   splitNames,
 } from "@/lib/import/normalize";
+import type { Grid } from "@/lib/import/free";
 import type {
   ParsedCampaign,
   ParsedContent,
@@ -246,6 +247,56 @@ export function isTemplate(workbook: ExcelJS.Workbook): boolean {
   if (!planning) return false;
   const col = headerMap(planning);
   return col("Semaine") !== null && col("Jour") !== null && col("Compte") !== null;
+}
+
+// ---------- Free-form files ----------
+
+const MAX_COLUMNS = 30;
+
+/** A cell as display text: dates as yyyy-MM-dd, Excel times as HH:mm. */
+function cellText(cell: Cell): string {
+  const { value: v } = readCell(cell);
+  if (v instanceof Date) {
+    return v.getUTCFullYear() <= 1900 ? (parseTime(v) ?? "") : v.toISOString().slice(0, 10);
+  }
+  return cleanMultiline(v);
+}
+
+/**
+ * The planning of a free-form workbook as a grid: the sheet with the most rows, headers on the
+ * first row with at least two filled cells.
+ */
+export function readGrid(workbook: ExcelJS.Workbook): Grid | null {
+  const sheets = workbook.worksheets.filter((ws) => ws.actualRowCount > 1);
+  const sheet = sheets.sort((a, b) => b.actualRowCount - a.actualRowCount)[0];
+  if (!sheet) return null;
+
+  let headerRow = 0;
+  let headers: string[] = [];
+  const rows: Grid["rows"] = [];
+  sheet.eachRow((row, index) => {
+    const width = Math.min(row.cellCount, MAX_COLUMNS);
+    const cells = Array.from({ length: width }, (_, i) => cellText(row.getCell(i + 1)));
+    const filled = cells.filter(Boolean).length;
+    if (!headerRow) {
+      if (filled >= 2) {
+        headerRow = index;
+        headers = cells;
+      }
+      return;
+    }
+    if (filled > 0 && rows.length < MAX_ROWS) rows.push({ row: index, cells });
+  });
+  if (!headerRow) return null;
+  // As wide as the widest row, minus trailing columns without a header nor any value.
+  let width = Math.max(headers.length, ...rows.map((r) => r.cells.length));
+  while (width > 0 && !headers[width - 1] && rows.every((r) => !r.cells[width - 1])) width--;
+  return {
+    sheet: sheet.name,
+    headerRow,
+    headers: headers.slice(0, width).map((h, i) => h || `Colonne ${i + 1}`),
+    rows: rows.map((r) => ({ row: r.row, cells: r.cells.slice(0, width) })),
+  };
 }
 
 export async function readWorkbook(buffer: ArrayBuffer): Promise<ExcelJS.Workbook> {

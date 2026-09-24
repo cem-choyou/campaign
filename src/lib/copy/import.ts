@@ -22,10 +22,30 @@ export const importCopy = {
       "Ce fichier n'est pas un .xlsx. Enregistrez-le au format Excel (.xlsx) ou téléchargez le modèle.",
     unreadable:
       "Le fichier n'a pas pu être lu. Vérifiez qu'il s'agit d'un .xlsx, ou téléchargez le modèle.",
-    notTemplate:
-      "Ce fichier ne suit pas le modèle Campaign (onglet « Planning » avec les colonnes Semaine, Jour, Compte). Téléchargez le modèle pour y reporter votre planning.",
+    empty:
+      "Aucune ligne de planning trouvée dans ce fichier. Vérifiez l'onglet, ou téléchargez le modèle.",
     tooMany: "Beaucoup d'imports en peu de temps. Patientez quelques minutes.",
     network: "Le fichier n'a pas pu être envoyé. Vérifiez votre connexion et réessayez.",
+  },
+  mapping: {
+    title: "À quoi correspond chaque colonne ?",
+    intro:
+      "Ce fichier ne suit pas le modèle Campaign. L'IA a proposé une correspondance : vérifiez-la, puis continuez.",
+    heuristic:
+      "Proposition automatique (l'IA n'était pas disponible) : vérifiez bien chaque colonne.",
+    sheet: (name: string, rows: number) =>
+      `Onglet « ${name} » · ${rows} ligne${rows > 1 ? "s" : ""}`,
+    column: "Colonne du fichier",
+    samples: "Exemples de valeurs",
+    field: "Correspond à",
+    campaignName: "Nom de la campagne",
+    startDate: "Lundi de la semaine 1",
+    startDateHint: "Sert à calculer les dates à partir des colonnes Semaine et Jour.",
+    next: "Continuer vers l'aperçu",
+    interpreting: "Interprétation des contenus et des comptes…",
+    afterNote:
+      "Ensuite, l'IA interprète les valeurs : « Capsule 1 » devient le contenu CAP1, « Shorts » la chaîne YouTube…",
+    required: "Indiquez au moins le compte, et la date ou la semaine et le jour.",
   },
   preview: {
     title: "Vérifiez avant d'importer",
