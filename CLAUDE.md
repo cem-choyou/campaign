@@ -984,7 +984,7 @@ tests/   unit/  e2e/  fixtures/ (plan LDDLT d'origine + modèle)  screenshots/
 ## 19. État d'avancement
 
 - [ ] Lot 1 — Socle : **code terminé et testé (24/09/2026), mise en production en attente** des accès (voir « Reste à faire »)
-- [ ] Lot 2 — Import Excel + IA : **code terminé et testé (24/09/2026, IA simulée), essai réel de Sonnet 5 en attente** de la clé (voir bilan)
+- [x] Lot 2 — Import Excel + IA : terminé le 24/09/2026 (tests avec IA simulée + essai réel de Sonnet 5 validé), à mettre en production avec le lot 1
 - [ ] Lot 3 — Validation + Relais (V1 en service)
 - [ ] Lot 4 — Publication automatique
 - [ ] Lot 5 — Multi-client
@@ -1042,4 +1042,4 @@ Puis : déploiement selon `deploy/RUNBOOK.md`, vérification HTTPS/en-têtes, co
 - Import : un relais inconnu nommé dans le planning n'est créé que par un administrateur de la marque et seulement avec son e-mail ; un planning proposé par l'IA passe par exactement les mêmes contrôles et la même transaction qu'un import.
 - Dépendances ajoutées : `@anthropic-ai/sdk` 0.128.0, `exceljs` 4.4.0 (alerte `npm audit` modérée sur `uuid`, fonctions v3/v5/v6 non utilisées par exceljs).
 
-**Reste à faire pour clore le lot 2** — côté Cem : une clé Anthropic **rattachée à un workspace** (ou `ANTHROPIC_WORKSPACE_ID` dans `.env.local`), puis `npx tsx scripts/ai-smoke.ts` pour valider la qualité du français sur un post LDDLT et un Short (quelques centimes).
+**Essai réel (24/09/2026)** : `scripts/ai-smoke.ts` (post LDDLT + Short) et `scripts/ai-schemas-smoke.ts` (correspondance de colonnes, interprétation, planning) passent sur Sonnet 5 (~5 s par post, premier mot à ~1 s). Il a révélé trois points corrigés (commit `fix: harden AI outputs…`) : noms de comptes renvoyés avec « (LinkedIn) » par le planning, codes vides dans l'interprétation, titres internes (« Capsule 1 ») cités dans les posts. Relancer ces deux scripts après toute modification des prompts.
