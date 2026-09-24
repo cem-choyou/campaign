@@ -2,6 +2,7 @@ import "server-only";
 import type { z } from "zod";
 import { campaignStats, daysBetween, WIZARD_DONE } from "@/lib/campaigns";
 import { formatDateOnly, parseDateOnly, shiftLocalDays } from "@/lib/dates";
+import { type PostFormat, isComplete } from "@/lib/posts";
 import type { campaignDraftSchema } from "@/lib/validations/campaign";
 import { db } from "@/server/db";
 import { AppError } from "@/server/errors";
@@ -315,6 +316,8 @@ export async function getCampaignForWizard(campaignId: string, brandId: string) 
         where: { deletedAt: null, status: { not: "CANCELLED" } },
         select: {
           body: true,
+          format: true,
+          youtubeTitle: true,
           socialAccount: { select: { platform: true } },
           authorContributorId: true,
         },
@@ -331,7 +334,8 @@ export async function getCampaignForWizard(campaignId: string, brandId: string) 
       posts: posts.length,
       linkedin: posts.filter((p) => platformOf(p) === "LINKEDIN").length,
       youtube: posts.filter((p) => platformOf(p) === "YOUTUBE").length,
-      postsWithoutText: posts.filter((p) => !p.body?.trim()).length,
+      postsWithoutText: posts.filter((p) => !isComplete({ ...p, format: p.format as PostFormat }))
+        .length,
     },
   };
 }

@@ -89,6 +89,7 @@ model Brand {
   campaigns         Campaign[]
   contributors      Contributor[]
   activities        Activity[]
+  aiUsages          AiUsage[]
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 }
@@ -301,6 +302,7 @@ model Post {
   authorContributor   Contributor?   @relation("AuthoredPosts", fields: [authorContributorId], references: [id], onDelete: SetNull)
   missions            Mission[]
   comments            Comment[]
+  versions            PostVersion[]
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 
@@ -380,6 +382,30 @@ model Comment {
   createdAt  DateTime  @default(now())
 }
 
+/// Text history of a post (§8.7): one row per AI text used and per human editing session.
+model PostVersion {
+  id          String     @id @default(cuid())
+  postId      String
+  body        String     @db.Text
+  source      BodySource
+  createdById String?
+  post        Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+
+  @@index([postId, createdAt])
+}
+
+/// AI generations per brand and local day, for AI_DAILY_LIMIT_PER_BRAND (§9.6).
+model AiUsage {
+  id      String   @id @default(cuid())
+  brandId String
+  day     DateTime @db.Date
+  count   Int      @default(0)
+  brand   Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, day])
+}
+
 enum ImportStatus {
   PARSED
   NEEDS_MAPPING
@@ -395,6 +421,7 @@ model ImportJob {
   status      ImportStatus
   mapping     Json?
   report      Json
+  payload     Json? // parsed file + user corrections, between preview and import
   createdById String
   campaign    Campaign?    @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   createdAt   DateTime     @default(now())

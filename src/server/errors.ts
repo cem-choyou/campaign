@@ -3,7 +3,8 @@ import { z } from "zod";
 import { common } from "@/lib/copy/common";
 import { logger } from "@/server/logger";
 
-export type AppErrorCode = "FORBIDDEN" | "NOT_FOUND" | "INVALID" | "CONFLICT" | "UNAUTHENTICATED";
+export type AppErrorCode =
+  "FORBIDDEN" | "NOT_FOUND" | "INVALID" | "CONFLICT" | "UNAUTHENTICATED" | "UNAVAILABLE";
 
 /** Expected business error: its message is safe to show to the user. */
 export class AppError extends Error {
@@ -26,6 +27,7 @@ function defaultMessage(code: AppErrorCode): string {
     case "INVALID":
       return common.errors.invalid;
     case "CONFLICT":
+    case "UNAVAILABLE":
       return common.errors.generic;
   }
 }
