@@ -8,6 +8,7 @@ import {
   commitImportAction,
   previewImportAction,
 } from "@/app/(app)/[brandSlug]/campagnes/import-actions";
+import { BulkWriterButton } from "@/components/ai/bulk-writer";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -26,17 +27,20 @@ type UploadResult =
   | { error: string }
   | ({ status: "PARSED" } & Loaded)
   | { status: "NEEDS_MAPPING"; jobId: string; fileName: string; mapping: MappingView };
-type Done = { campaignId: string; created: number; skipped: number; replaced: number };
+type Done = {
+  campaignId: string;
+  created: number;
+  skipped: number;
+  replaced: number;
+  toWrite: number;
+};
 
 export function ImportFlow({
   brand,
   campaign,
-  onDone,
 }: {
   brand: { id: string; slug: string; timezone: string };
   campaign: { id: string; name: string } | null;
-  /** Rendered after a successful import (e.g. « Rédiger les textes vides avec l'IA »). */
-  onDone?: (done: Done) => React.ReactNode;
 }) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [mapping, setMapping] = useState<Mapped | null>(null);
@@ -139,8 +143,10 @@ export function ImportFlow({
           {done.replaced > 0 && ` ${copy.done.replaced(done.replaced)}`}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
-          {onDone?.(done)}
-          <Button asChild variant={onDone ? "outline" : "default"}>
+          {done.toWrite > 0 && (
+            <BulkWriterButton campaignId={done.campaignId} variant="default" size="default" />
+          )}
+          <Button asChild variant={done.toWrite > 0 ? "outline" : "default"}>
             <Link href={base}>
               {copy.done.open}
               <ArrowRight aria-hidden />

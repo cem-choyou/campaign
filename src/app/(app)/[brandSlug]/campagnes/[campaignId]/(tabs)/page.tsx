@@ -2,8 +2,10 @@ import { FileSpreadsheet } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BulkWriterButton } from "@/components/ai/bulk-writer";
 import { Button } from "@/components/ui/button";
 import { campaignsCopy } from "@/lib/copy/campaigns";
+import { isComplete } from "@/lib/posts";
 import type { CalendarView } from "@/components/calendar/post-calendar";
 import { PlanningView } from "@/components/calendar/planning-view";
 import { PostEditor } from "@/components/post-editor/post-editor";
@@ -55,12 +57,17 @@ export default async function PlanningPage({
       initialDate={start && start > today ? start : today}
       toolbar={
         canEdit && (
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/${brandSlug}/campagnes/importer?campagne=${campaign.id}`}>
-              <FileSpreadsheet aria-hidden />
-              {campaignsCopy.importExcel}
-            </Link>
-          </Button>
+          <>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/${brandSlug}/campagnes/importer?campagne=${campaign.id}`}>
+                <FileSpreadsheet aria-hidden />
+                {campaignsCopy.importExcel}
+              </Link>
+            </Button>
+            {posts.some(
+              (p) => p.status !== "CANCELLED" && p.status !== "PUBLISHED" && !isComplete(p),
+            ) && <BulkWriterButton campaignId={campaign.id} />}
+          </>
         )
       }
     >

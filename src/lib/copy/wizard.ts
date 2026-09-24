@@ -58,16 +58,63 @@ export const wizardCopy = {
     mainContentLink: "Lien du média (Frame.io, Drive…)",
     mainContentAdd: "Ajouter",
     mainContentAdded: "Vidéo principale ajoutée.",
+    helper: {
+      open: "M'aider à écrire le brief",
+      title: "Écrire le brief avec l'IA",
+      description:
+        "Trois questions rapides, puis l'IA propose la cible, le message clé, l'appel à l'action et le brief. Vous pourrez tout modifier.",
+      loading: "Préparation des questions…",
+      answerPlaceholder: "Votre réponse (facultatif)",
+      write: "Rédiger le brief",
+      writing: "Rédaction du brief…",
+      applied: "Brief rédigé : relisez-le et ajustez-le si besoin.",
+      cancel: "Annuler",
+    },
     exampleToggle: "Voir un exemple de bon brief",
     example:
       "La vidéo LDDLT (12 min) montre comment trois DSI ont mené leur transformation. Nous voulons qu'elle soit vue par des décideurs IT, pas seulement par notre réseau. Ton : expert mais accessible, concret, sans jargon marketing. Mettre en avant les témoignages et les chiffres (–30 % de tickets). Éviter les superlatifs et les promesses vagues. Chaque capsule met en avant une idée de la vidéo et renvoie vers la version longue.",
   },
   step3: {
     intro: "Comment voulez-vous construire le planning ?",
+    choicesLabel: "Façon de construire le planning",
+    importTitle: "Importer un fichier Excel",
+    importBody:
+      "Reprenez un planning existant ou le modèle Campaign : aperçu et corrections avant la création des posts.",
+    importAction: "Importer un fichier",
+    templateAction: "Télécharger le modèle",
+    aiTitle: "Laisser l'IA proposer un planning",
+    aiBody:
+      "À partir du brief, des dates et des contenus de la campagne. Vous gardez ce qui vous convient.",
     blankTitle: "Partir d'un calendrier vide",
     blankBody:
       "Ajoutez les posts directement dans le calendrier de la campagne : un clic sur un jour suffit.",
     selected: "Choisi",
+    planner: {
+      propose: "Proposer un planning",
+      proposing: "Préparation du planning…",
+      again: "Nouvelle proposition",
+      intro: (n: number) =>
+        `${n} publication${n > 1 ? "s" : ""} proposée${n > 1 ? "s" : ""}. Décochez ce qui ne vous convient pas, ajustez les sujets, puis créez les posts.`,
+      caption: "Planning proposé par l'IA",
+      columns: {
+        keep: "Garder",
+        when: "Quand",
+        account: "Compte",
+        format: "Format",
+        content: "Contenu",
+        angle: "Sujet / angle",
+      },
+      keep: (label: string) => `Garder : ${label}`,
+      angleLabel: (label: string) => `Sujet de ${label}`,
+      when: (week: number, day: string, time: string) => `S${week} · ${day} ${time}`,
+      create: (n: number) => (n === 1 ? "Créer 1 post" : `Créer ${n} posts`),
+      creating: "Création des posts…",
+      created: (n: number) =>
+        n === 1
+          ? "1 post créé dans le calendrier de la campagne."
+          : `${n} posts créés dans le calendrier de la campagne.`,
+      none: "Cochez au moins une publication.",
+    },
   },
   step4: {
     intro: "Voici où en est votre campagne. Vous pouvez l'ouvrir pour planifier les posts.",

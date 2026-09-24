@@ -7,10 +7,13 @@ import {
   CalendarPlus,
   Check,
   ChevronDown,
+  Download,
+  FileSpreadsheet,
   FileText,
   Film,
   Loader2,
   Plus,
+  Sparkles,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -20,6 +23,8 @@ import {
   saveCampaignDraftAction,
   saveContentAction,
 } from "@/app/(app)/[brandSlug]/campagnes/actions";
+import { campaignSummaryAction } from "@/app/(app)/[brandSlug]/campagnes/ai-actions";
+import { BulkWriterButton } from "@/components/ai/bulk-writer";
 import { Field } from "@/components/forms/field";
 import { SaveIndicator } from "@/components/forms/save-indicator";
 import { useAutosave } from "@/components/forms/use-autosave";
@@ -38,6 +43,10 @@ import { common } from "@/lib/copy/common";
 import { wizardCopy } from "@/lib/copy/wizard";
 import { isDateOnly, mondayOf } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { AiPlanner } from "./ai-planner";
+import { BriefHelper } from "./brief-helper";
+
+type PlanningChoice = "import" | "ai" | "blank";
 
 const copy = wizardCopy;
 
@@ -84,9 +93,13 @@ export function CampaignWizard({
   const reduceMotion = useReducedMotion();
   const [values, setValues] = useState(initialValues);
   const [contents, setContents] = useState(initialContents);
+  const [figures, setFigures] = useState(summary);
+  const [planning, setPlanning] = useState<PlanningChoice>(summary.posts > 0 ? "blank" : "ai");
   const [direction, setDirection] = useState(1);
   const [leaving, startLeaving] = useTransition();
   const campaignId = useRef(initialCampaignId);
+  /** Same id as a state, for rendering (refs cannot be read during render). */
+  const [savedId, setSavedId] = useState(initialCampaignId);
   const creating = useRef<Promise<string> | null>(null);
   const base = `/${brand.slug}/campagnes`;
   const step = Math.min(Math.max(values.wizardStep, 1), 4);
@@ -108,6 +121,7 @@ export function CampaignWizard({
         throw new Error(result.error);
       }
       campaignId.current = result.data.id;
+      setSavedId(result.data.id);
       window.history.replaceState(null, "", `${base}/${result.data.id}/assistant`);
       return result.data.id;
     })();
@@ -152,6 +166,32 @@ export function CampaignWizard({
         toast.success(copy.draftSaved);
       }
       router.push(base);
+    });
+
+  /** The saved draft's id, with the latest fields written (the AI reads them from the database). */
+  const savedCampaignId = async () => {
+    const id = await ensureCampaign(values);
+    await flush();
+    return id;
+  };
+
+  const refreshFigures = async () => {
+    if (!campaignId.current) return;
+    const result = await campaignSummaryAction({ campaignId: campaignId.current });
+    if (result.ok) setFigures(result.data);
+  };
+
+  const goImport = () =>
+    startLeaving(async () => {
+      try {
+        const id = await ensureCampaign(values);
+        // Resuming the wizard after the import shows the summary.
+        const result = await save({ ...values, wizardStep: 4 });
+        if (!result.ok) return void toast.error(result.error || common.errors.generic);
+        router.push(`${base}/importer?campagne=${id}`);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : common.errors.generic);
+      }
     });
 
   const openCampaign = () =>
@@ -323,6 +363,33 @@ export function CampaignWizard({
           {step === 2 && (
             <div className="grid gap-5">
               <p className="text-muted-foreground">{copy.step2.intro}</p>
+              <BriefHelper
+                brandId={brand.id}
+                draft={{
+                  name: values.name,
+                  objective: values.objective,
+                  audience: values.audience,
+                  keyMessage: values.keyMessage,
+                  callToAction: values.callToAction,
+                  brief: values.brief,
+                }}
+                onApply={(brief) => {
+                  const previous = {
+                    audience: values.audience,
+                    keyMessage: values.keyMessage,
+                    callToAction: values.callToAction,
+                    brief: values.brief,
+                  };
+                  setValues((v) => ({ ...v, ...brief }));
+                  toast.success(copy.step2.helper.applied, {
+                    duration: 8000,
+                    action: {
+                      label: common.actions.undo,
+                      onClick: () => setValues((v) => ({ ...v, ...previous })),
+                    },
+                  });
+                }}
+              />
               <Field label={copy.step2.audience} hint={copy.step2.audienceHint}>
                 {(p) => (
                   <Textarea
@@ -418,22 +485,82 @@ export function CampaignWizard({
 
           {step === 3 && (
             <div className="grid gap-4">
-              <p className="text-muted-foreground">{copy.step3.intro}</p>
-              <div
-                className="border-brand ring-brand/20 bg-card flex items-start gap-4 rounded-xl border-2 p-5 ring-4"
-                aria-current="true"
-              >
-                <span className="bg-brand/10 text-brand flex size-10 shrink-0 items-center justify-center rounded-lg">
-                  <CalendarPlus className="size-5" aria-hidden />
-                </span>
-                <div className="flex-1">
-                  <p className="font-medium">{copy.step3.blankTitle}</p>
-                  <p className="text-muted-foreground mt-1 text-sm">{copy.step3.blankBody}</p>
-                </div>
-                <span className="bg-brand text-brand-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium">
-                  <Check className="size-3.5" aria-hidden />
-                  {copy.step3.selected}
-                </span>
+              <p className="text-muted-foreground" id="planning-choices">
+                {copy.step3.intro}
+              </p>
+              <div role="radiogroup" aria-labelledby="planning-choices" className="grid gap-3">
+                {(
+                  [
+                    ["import", FileSpreadsheet, copy.step3.importTitle, copy.step3.importBody],
+                    ["ai", Sparkles, copy.step3.aiTitle, copy.step3.aiBody],
+                    ["blank", CalendarPlus, copy.step3.blankTitle, copy.step3.blankBody],
+                  ] as const
+                ).map(([choice, Icon, title, body]) => {
+                  const selected = planning === choice;
+                  return (
+                    <div
+                      key={choice}
+                      className={cn(
+                        "bg-card grid gap-4 rounded-xl border-2 p-5 transition-colors",
+                        selected
+                          ? "border-brand ring-brand/20 ring-4"
+                          : "hover:border-foreground/20",
+                      )}
+                    >
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => setPlanning(choice)}
+                        className="focus-visible:ring-ring flex items-start gap-4 rounded-md text-left outline-none focus-visible:ring-2"
+                      >
+                        <span className="bg-brand/10 text-brand flex size-10 shrink-0 items-center justify-center rounded-lg">
+                          <Icon className="size-5" aria-hidden />
+                        </span>
+                        <span className="flex-1">
+                          <span className="block font-medium">{title}</span>
+                          <span className="text-muted-foreground mt-1 block text-sm">{body}</span>
+                        </span>
+                        {selected && (
+                          <span className="bg-brand text-brand-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium">
+                            <Check className="size-3.5" aria-hidden />
+                            {copy.step3.selected}
+                          </span>
+                        )}
+                      </button>
+                      {selected && choice === "import" && (
+                        <div className="flex flex-wrap gap-2 sm:pl-14">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={goImport}
+                            disabled={!valid || leaving}
+                          >
+                            <FileSpreadsheet aria-hidden />
+                            {copy.step3.importAction}
+                          </Button>
+                          <Button asChild variant="outline" size="sm">
+                            <a
+                              href={`/api/templates/campagne?marque=${encodeURIComponent(brand.slug)}`}
+                              download
+                            >
+                              <Download aria-hidden />
+                              {copy.step3.templateAction}
+                            </a>
+                          </Button>
+                        </div>
+                      )}
+                      {selected && choice === "ai" && (
+                        <div className="sm:pl-14">
+                          <AiPlanner
+                            getCampaignId={savedCampaignId}
+                            onCreated={() => void refreshFigures()}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -444,11 +571,11 @@ export function CampaignWizard({
               <dl className="grid gap-3 sm:grid-cols-2">
                 <SummaryTile
                   label={copy.step4.posts}
-                  value={String(summary.posts)}
+                  value={String(figures.posts)}
                   detail={
-                    summary.posts === 0
+                    figures.posts === 0
                       ? copy.step4.noPostsYet
-                      : copy.step4.byChannel(summary.linkedin, summary.youtube)
+                      : copy.step4.byChannel(figures.linkedin, figures.youtube)
                   }
                 />
                 <SummaryTile
@@ -461,7 +588,7 @@ export function CampaignWizard({
                 />
                 <SummaryTile
                   label={copy.step4.postsWithoutText}
-                  value={String(summary.postsWithoutText)}
+                  value={String(figures.postsWithoutText)}
                   detail={copy.step4.postsWithoutTextHint}
                 />
                 <SummaryTile
@@ -474,6 +601,14 @@ export function CampaignWizard({
                   warn={!(values.audience || values.keyMessage || values.brief)}
                 />
               </dl>
+              {savedId && figures.postsWithoutText > 0 && (
+                <BulkWriterButton
+                  campaignId={savedId}
+                  variant="default"
+                  size="default"
+                  onFinished={() => void refreshFigures()}
+                />
+              )}
             </div>
           )}
         </motion.div>

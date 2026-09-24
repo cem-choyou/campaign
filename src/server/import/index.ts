@@ -11,6 +11,7 @@ import {
 import type { ContentType } from "@/lib/import/normalize";
 import { type BrandData, resolveImport } from "@/lib/import/resolve";
 import type { ImportPreview, Overrides, ParsedWorkbook, PreviewChoices } from "@/lib/import/types";
+import { type PostFormat, isComplete } from "@/lib/posts";
 import { extractYoutubeId } from "@/lib/youtube";
 import { interpretValues } from "@/server/ai/import";
 import { db } from "@/server/db";
@@ -270,11 +271,20 @@ export async function commitImport(input: {
     input.canCreateContributors,
   );
   if (preview.counts.errors > 0) {
+    const first =
+      preview.issues.find((i) => i.level === "error")?.message ??
+      preview.posts
+        .flatMap((p) =>
+          p.issues.filter((i) => i.level === "error").map((i) => `ligne ${p.row} : ${i.message}`),
+        )
+        .at(0);
     throw new AppError(
       "INVALID",
-      preview.counts.errors === 1
-        ? "Il reste une erreur à corriger avant d'importer."
-        : `Il reste ${preview.counts.errors} erreurs à corriger avant d'importer.`,
+      `${
+        preview.counts.errors === 1
+          ? "Il reste une erreur à corriger avant d'importer"
+          : `Il reste ${preview.counts.errors} erreurs à corriger avant d'importer`
+      }${first ? ` (${first})` : ""}.`,
     );
   }
   const posts = preview.posts.filter((p) => !p.skip);
@@ -477,6 +487,12 @@ export async function commitImport(input: {
         contents: preview.contents.length,
         contributors: preview.newContributors.length,
         warnings: preview.counts.warnings,
+        /** Posts the bulk writer can draft next (no text yet, not published). */
+        toWrite: postRows.filter(
+          (p) =>
+            p.status !== "PUBLISHED" &&
+            !isComplete({ format: p.format, body: p.body, youtubeTitle: null }),
+        ).length,
       };
       await tx.importJob.update({
         where: { id: job.id },
@@ -501,6 +517,78 @@ export async function commitImport(input: {
     { timeout: 30_000, maxWait: 10_000 },
   );
   return result;
+}
+
+/**
+ * « Laisser l'IA proposer un planning » (§8.5): the accepted proposal goes through exactly the same
+ * checks and transaction as an Excel import into the campaign.
+ */
+export async function createPostsFromPlan(input: {
+  campaignId: string;
+  brandId: string;
+  items: {
+    week: number;
+    day: number;
+    time: string;
+    account: string;
+    format: PostFormat;
+    contentCode: string | null;
+    angle: string;
+  }[];
+  actor: Actor;
+}) {
+  const parsed: ParsedWorkbook = {
+    kind: "template",
+    campaign: {
+      brand: "",
+      name: "",
+      startDate: null,
+      objective: "",
+      audience: "",
+      brief: "",
+      mainContentCode: "",
+    },
+    contents: [],
+    contributors: [],
+    rows: input.items.map((item, i) => ({
+      row: i + 1,
+      week: item.week,
+      weekLabel: String(item.week),
+      dayOffset: item.day,
+      dayLabel: "",
+      date: null,
+      time: item.time,
+      timeLabel: item.time,
+      account: item.account,
+      format: item.format,
+      formatLabel: "",
+      contentCode: item.contentCode ?? "",
+      linkTo: "",
+      angle: item.angle,
+      body: "",
+      relayNames: [],
+      statusPublished: false,
+      published: false,
+      publishedUrl: "",
+    })),
+    fileIssues: [],
+  };
+  const job = await createImportJob({
+    brandId: input.brandId,
+    campaignId: input.campaignId,
+    fileName: "Planning proposé par l'IA",
+    parsed,
+    status: "PARSED",
+    actor: input.actor,
+  });
+  return commitImport({
+    jobId: job.id,
+    brandId: input.brandId,
+    overrides: {},
+    mode: "add",
+    canCreateContributors: false,
+    actor: input.actor,
+  });
 }
 
 /** Brand data for the downloadable template (§12). */

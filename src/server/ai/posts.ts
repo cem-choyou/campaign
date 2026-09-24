@@ -121,7 +121,14 @@ export async function writeEmptyPost(postId: string, actor: { userId: string; br
   const { input, post, brand } = await loadPostPromptInput(postId, actor.brandId);
   const current = await db.post.findUniqueOrThrow({
     where: { id: postId },
-    select: { status: true, format: true, body: true, youtubeTitle: true },
+    select: {
+      status: true,
+      format: true,
+      body: true,
+      youtubeTitle: true,
+      youtubeDescription: true,
+      youtubeTags: true,
+    },
   });
   if (
     isLocked(current.status as PostStatus) ||
@@ -133,13 +140,14 @@ export async function writeEmptyPost(postId: string, actor: { userId: string; br
 
   if (input.post.platform === "YOUTUBE") {
     const meta = await suggestYoutubeMeta(postId, actor);
+    // A description or tags given in the Excel file are kept: only what is missing is filled.
     await db.$transaction([
       db.post.update({
         where: { id: post.id },
         data: {
           youtubeTitle: meta.title,
-          youtubeDescription: meta.description,
-          youtubeTags: meta.tags,
+          youtubeDescription: current.youtubeDescription || meta.description,
+          youtubeTags: current.youtubeTags.length ? current.youtubeTags : meta.tags,
           bodySource: "AI",
           aiPromptUsed: aiPromptRecord("post.youtube", { bulk: true }),
         },

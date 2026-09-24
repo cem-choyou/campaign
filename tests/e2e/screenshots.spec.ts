@@ -48,6 +48,19 @@ const SCREENS: Screen[] = [
   { name: "04-campagnes", path: `${BRAND}/campagnes` },
   { name: "05-assistant", path: `${BRAND}/campagnes/nouvelle` },
   {
+    name: "05b-assistant-planning-ia",
+    path: `${BRAND}/campagnes/nouvelle`,
+    prepare: async (page) => {
+      await page.getByLabel("Nom de la campagne").fill(`Capture ${Date.now()}`);
+      await page.getByLabel("Date de début").fill(E2E.demoStart);
+      await expect(page).toHaveURL(/\/assistant$/, { timeout: 15_000 });
+      await page.getByRole("button", { name: "Continuer" }).click();
+      await page.getByRole("button", { name: "Continuer" }).click();
+      await page.getByRole("button", { name: "Proposer un planning" }).click();
+      await expect(page.getByText(/publications proposées/)).toBeVisible();
+    },
+  },
+  {
     name: "06-planning-calendrier",
     path: demoCampaignPath,
     cookies: { "planning-mode": "calendar", "calendar-view": "dayGridMonth" },

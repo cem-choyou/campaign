@@ -21,6 +21,10 @@ export async function signInAs(page: Page, role: Role) {
 
 /** WCAG 2.1 AA check; serious and critical violations fail the test. */
 export async function expectAccessible(page: Page, context: string) {
+  // Colours are checked at rest: a button fading in (disabled → enabled) is not a violation.
+  await page.addStyleTag({
+    content: "*, *::before, *::after { transition: none !important; animation: none !important; }",
+  });
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .exclude("nextjs-portal")
