@@ -37,6 +37,7 @@ export function PlanningView({
   initialDate,
   showCampaign,
   campaignHref,
+  toolbar,
   children,
 }: {
   posts: PlanningPost[];
@@ -50,6 +51,8 @@ export function PlanningView({
   showCampaign?: boolean;
   /** Where a post opens: the campaign page of that post (brand calendar) or the current page. */
   campaignHref?: (campaignId: string) => string;
+  /** Extra actions on the right of the mode switch (import, AI writing…). */
+  toolbar?: React.ReactNode;
   /** Post editor panel (rendered by the page). */
   children?: React.ReactNode;
 }) {
@@ -212,6 +215,7 @@ export function PlanningView({
             {campaignId ? copy.emptyBody : copy.emptyBrandBody}
           </p>
         )}
+        {toolbar && <div className="ml-auto flex flex-wrap items-center gap-2">{toolbar}</div>}
       </div>
 
       {mode === "calendar" ? (

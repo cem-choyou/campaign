@@ -1,4 +1,12 @@
-import { ArrowRight, CheckCircle2, PenLine, Plus, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Download,
+  FileSpreadsheet,
+  PenLine,
+  Plus,
+  Sparkles,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PlatformIcon } from "@/components/brand/platform-icon";
@@ -45,12 +53,31 @@ export default async function TodayPage({ params }: { params: Promise<{ brandSlu
             <h2 className="text-lg font-semibold">{todayCopy.firstRun.title}</h2>
             <p className="text-muted-foreground mt-2 max-w-md">{todayCopy.firstRun.body}</p>
             {canEdit && (
-              <Button asChild size="lg" className="mt-6">
-                <Link href={`${base}/campagnes/nouvelle`}>
-                  <Plus aria-hidden />
-                  {todayCopy.firstRun.create}
-                </Link>
-              </Button>
+              <div className="mt-6 flex flex-col items-center gap-3">
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button asChild size="lg">
+                    <Link href={`${base}/campagnes/nouvelle`}>
+                      <Plus aria-hidden />
+                      {todayCopy.firstRun.create}
+                    </Link>
+                  </Button>
+                  <Button asChild size="lg" variant="outline">
+                    <Link href={`${base}/campagnes/importer`}>
+                      <FileSpreadsheet aria-hidden />
+                      {todayCopy.firstRun.import}
+                    </Link>
+                  </Button>
+                </div>
+                <Button asChild variant="link" size="sm">
+                  <a
+                    href={`/api/templates/campagne?marque=${encodeURIComponent(brandSlug)}`}
+                    download
+                  >
+                    <Download aria-hidden />
+                    {todayCopy.firstRun.template}
+                  </a>
+                </Button>
+              </div>
             )}
           </div>
         </PageBody>

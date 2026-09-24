@@ -1,6 +1,9 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { Page } from "@playwright/test";
 import { E2E } from "./config";
 import { BRAND, expect, signInAs, test } from "./fixtures";
+import { lddltFile } from "./lddlt-file";
 
 // Captures of every lot 1 screen: 1440 px and 390 px, light and dark (§0, §8.12).
 // Output: tests/screenshots/<screen>-<desktop|mobile>-<light|dark>.png
@@ -79,6 +82,19 @@ const SCREENS: Screen[] = [
   { name: "15-reglages-acces", path: `${BRAND}/reglages/acces` },
   { name: "16-reglages-relais", path: `${BRAND}/reglages/relais` },
   { name: "17-invitation-invalide", path: "/invitation/lien-expire", anonymous: true },
+  { name: "21-import-depot", path: `${BRAND}/campagnes/importer` },
+  {
+    name: "22-import-apercu",
+    path: `${BRAND}/campagnes/importer`,
+    prepare: async (page) => {
+      const file = join(tmpdir(), `lddlt-${Date.now()}.xlsx`);
+      await lddltFile(file, (planning) => {
+        planning.getCell("E4").value = "Shorts";
+      });
+      await page.getByLabel("Choisir un fichier").setInputFiles(file);
+      await expect(page.getByText("1 erreur à corriger")).toBeVisible();
+    },
+  },
   { name: "18-page-introuvable", path: `${BRAND}/campagnes/inexistante` },
   { name: "19-confidentialite", path: "/confidentialite", anonymous: true },
   { name: "20-mentions-legales", path: "/mentions-legales", anonymous: true },

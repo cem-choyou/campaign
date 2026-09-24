@@ -1,5 +1,9 @@
+import { FileSpreadsheet } from "lucide-react";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { campaignsCopy } from "@/lib/copy/campaigns";
 import type { CalendarView } from "@/components/calendar/post-calendar";
 import { PlanningView } from "@/components/calendar/planning-view";
 import { PostEditor } from "@/components/post-editor/post-editor";
@@ -49,6 +53,16 @@ export default async function PlanningPage({
       initialMode={cookieStore.get(PLANNING_MODE_COOKIE)?.value === "list" ? "list" : "calendar"}
       initialView={view && VIEWS.includes(view) ? view : "dayGridMonth"}
       initialDate={start && start > today ? start : today}
+      toolbar={
+        canEdit && (
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/${brandSlug}/campagnes/importer?campagne=${campaign.id}`}>
+              <FileSpreadsheet aria-hidden />
+              {campaignsCopy.importExcel}
+            </Link>
+          </Button>
+        )
+      }
     >
       <PostEditor
         post={editorPost && editorPost.campaignId === campaign.id ? editorPost : null}

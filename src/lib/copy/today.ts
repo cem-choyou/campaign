@@ -42,7 +42,9 @@ export const todayCopy = {
   },
   firstRun: {
     title: "Bienvenue sur Campaign",
-    body: "Planifiez vos publications LinkedIn et YouTube, faites-les valider et suivez leur mise en ligne. Commencez par créer votre première campagne.",
+    body: "Planifiez vos publications LinkedIn et YouTube, faites-les valider et suivez leur mise en ligne. Créez votre première campagne, ou importez un planning Excel existant.",
     create: "Créer une campagne",
+    import: "Importer un Excel",
+    template: "Télécharger le modèle Excel",
   },
 } as const;

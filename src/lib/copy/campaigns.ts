@@ -2,6 +2,7 @@ export const campaignsCopy = {
   title: "Campagnes",
   description: "Toutes les campagnes de la marque, de la préparation au bilan.",
   create: "Créer une campagne",
+  importExcel: "Importer un Excel",
   searchPlaceholder: "Rechercher une campagne…",
   filters: {
     all: "Toutes",
@@ -61,7 +62,7 @@ export const campaignsCopy = {
   },
   empty: {
     title: "Votre première campagne vous attend",
-    body: "Créez une campagne pour planifier vos publications LinkedIn et YouTube sur un calendrier.",
+    body: "Créez une campagne pour planifier vos publications LinkedIn et YouTube sur un calendrier, ou importez un planning Excel.",
   },
   emptyFiltered: {
     title: "Aucune campagne ici",

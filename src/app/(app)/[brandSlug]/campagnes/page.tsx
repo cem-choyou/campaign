@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { FileSpreadsheet, Plus } from "lucide-react";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -44,12 +44,20 @@ export default async function CampaignsPage({
         actions={
           canEdit &&
           campaigns.length + counts.all > 0 && (
-            <Button asChild>
-              <Link href={`/${brandSlug}/campagnes/nouvelle`}>
-                <Plus aria-hidden />
-                {campaignsCopy.create}
-              </Link>
-            </Button>
+            <>
+              <Button asChild variant="outline">
+                <Link href={`/${brandSlug}/campagnes/importer`}>
+                  <FileSpreadsheet aria-hidden />
+                  {campaignsCopy.importExcel}
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href={`/${brandSlug}/campagnes/nouvelle`}>
+                  <Plus aria-hidden />
+                  {campaignsCopy.create}
+                </Link>
+              </Button>
+            </>
           )
         }
       />

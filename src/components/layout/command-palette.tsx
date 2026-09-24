@@ -2,6 +2,8 @@
 
 import {
   CalendarDays,
+  Download,
+  FileSpreadsheet,
   FileText,
   Home,
   Laptop,
@@ -99,6 +101,24 @@ export function CommandPalette({
               <CommandItem onSelect={() => go(`${base}/campagnes/nouvelle`)}>
                 <Plus aria-hidden />
                 {navCopy.palette.createCampaign}
+              </CommandItem>
+              <CommandItem onSelect={() => go(`${base}/campagnes/importer`)}>
+                <FileSpreadsheet aria-hidden />
+                {navCopy.palette.importExcel}
+              </CommandItem>
+              <CommandItem
+                onSelect={() =>
+                  run(() => {
+                    // A file download (API route), not a page: a download link, not the router.
+                    const link = document.createElement("a");
+                    link.href = `/api/templates/campagne?marque=${encodeURIComponent(brand.slug)}`;
+                    link.download = "";
+                    link.click();
+                  })
+                }
+              >
+                <Download aria-hidden />
+                {navCopy.palette.downloadTemplate}
               </CommandItem>
             </CommandGroup>
           )}

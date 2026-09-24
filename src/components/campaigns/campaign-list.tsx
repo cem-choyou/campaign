@@ -4,6 +4,7 @@ import {
   Archive,
   ArchiveRestore,
   Copy,
+  FileSpreadsheet,
   LayoutGrid,
   Loader2,
   Megaphone,
@@ -227,12 +228,20 @@ export function CampaignList({
         body={copy.empty.body}
         action={
           canEdit && (
-            <Button asChild size="lg">
-              <Link href={`${base}/nouvelle`}>
-                <Plus aria-hidden />
-                {copy.create}
-              </Link>
-            </Button>
+            <>
+              <Button asChild size="lg">
+                <Link href={`${base}/nouvelle`}>
+                  <Plus aria-hidden />
+                  {copy.create}
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link href={`${base}/importer`}>
+                  <FileSpreadsheet aria-hidden />
+                  {copy.importExcel}
+                </Link>
+              </Button>
+            </>
           )
         }
       />

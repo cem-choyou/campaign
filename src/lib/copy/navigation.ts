@@ -31,6 +31,8 @@ export const navCopy = {
       theme: "Thème",
     },
     createCampaign: "Créer une campagne",
+    importExcel: "Importer un Excel",
+    downloadTemplate: "Télécharger le modèle Excel",
     themeLight: "Thème clair",
     themeDark: "Thème sombre",
     themeSystem: "Thème du système",
