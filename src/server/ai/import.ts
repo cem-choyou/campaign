@@ -137,8 +137,11 @@ export async function interpretValues(
       { task: "import.mapping", effort: "low", mock: () => fallback },
     );
     const byValue = new Map(fallback.contents.map((c) => [c.value, c]));
+    // The heuristic fills what the model leaves out (seen live: empty codes, missed « renvoi
+    // vers la vidéo longue »), item by item.
     const contents = values.contents.flatMap((value) => {
       const ai = result.contents.find((c) => c.value === value);
+      const guess = byValue.get(value) ?? guessContent(value);
       const code = ai ? contentCode.safeParse(ai.code) : null;
       if (ai && code?.success) {
         const link = ai.linkToCode ? contentCode.safeParse(ai.linkToCode) : null;
@@ -147,11 +150,11 @@ export async function interpretValues(
             ...ai,
             code: code.data,
             title: ai.title.slice(0, 160),
-            linkToCode: link?.success ? link.data : null,
+            linkToCode: link?.success ? link.data : (guess?.linkToCode ?? null),
           },
         ];
       }
-      return byValue.get(value) ?? guessContent(value) ?? [];
+      return guess ?? [];
     });
     const names = new Set(publishers.map((p) => p.name));
     const accounts = values.accounts.map(({ label }) => {

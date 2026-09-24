@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { formatDateOnly } from "@/lib/dates";
-import { DAYS } from "@/lib/import/normalize";
+import { DAYS, normalizeKey } from "@/lib/import/normalize";
 import {
   type PostFormat,
   FORMATS_BY_PLATFORM,
@@ -245,7 +245,7 @@ export async function proposePlanning(
         campaignLines(context),
         `- Durée : ${weeks} semaine${weeks > 1 ? "s" : ""} à partir du lundi ${formatDateOnly(campaign.startDate)}`,
         "",
-        "Comptes et relais disponibles (champ « account », nom exact) :",
+        "Comptes et relais disponibles (champ « account » : le nom seul, sans le réseau entre parenthèses) :",
         ...publishers.map(
           (p) => `- ${p.name} (${p.platform === "LINKEDIN" ? "LinkedIn" : "YouTube"})`,
         ),
@@ -271,11 +271,15 @@ export async function proposePlanning(
   );
 
   // Keep only what the brand can publish: known accounts, allowed formats, known contents.
-  const byName = new Map(publishers.map((p) => [p.name, p]));
+  // Tolerant: the model sometimes echoes « IT for Business (LinkedIn) » from the list above.
+  const byKey = new Map(publishers.map((p) => [normalizeKey(p.name), p]));
+  const findPublisher = (account: string) =>
+    byKey.get(normalizeKey(account)) ??
+    byKey.get(normalizeKey(account.replace(/\s*\((linkedin|youtube)\)\s*$/i, "")));
   const codes = new Set(campaign.contents.map((c) => c.code));
   return result.posts
     .flatMap((p) => {
-      const publisher = byName.get(p.account);
+      const publisher = findPublisher(p.account);
       const parsed = plannedPostSchema.safeParse({
         ...p,
         time: /^\d{1,2}:\d{2}$/.test(p.time) ? p.time.padStart(5, "0") : "09:00",
@@ -287,6 +291,7 @@ export async function proposePlanning(
       return [
         {
           ...parsed.data,
+          account: publisher.name,
           format: formats.includes(parsed.data.format) ? parsed.data.format : formats[0]!,
           platform: publisher.platform,
         },

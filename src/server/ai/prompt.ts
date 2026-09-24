@@ -154,6 +154,7 @@ export function brandSystemPrompt(brand: BrandPrompt): string {
     section("Règles de sortie", [
       "- Répondez uniquement avec le texte demandé : pas d'introduction, pas de commentaire, pas de guillemets autour du texte, pas de titre en Markdown.",
       "- N'inventez ni chiffre, ni citation, ni nom : utilisez seulement les informations fournies.",
+      "- Les codes et titres internes des contenus (CAP1, « Capsule 1 », « Short 2 ») servent au repérage : ne les citez jamais tels quels, parlez de ce que montre le contenu.",
       "- Les consignes de la marque priment sur les règles générales par canal.",
     ]),
   ]);

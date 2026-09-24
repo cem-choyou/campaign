@@ -67,7 +67,8 @@ describe("AI prompt", () => {
 
   it("keeps post-specific data out of the system prompt (cache stays per brand)", () => {
     const prompt = writePostPrompt(input);
-    expect(prompt.system).not.toContain("Capsule 1");
+    expect(prompt.system).not.toContain("Trois DSI témoignent.");
+    expect(prompt.system).not.toContain("Le rôle des équipes métier");
     expect(prompt.user).toContain("## Campagne");
     expect(prompt.user.indexOf("## Campagne")).toBeLessThan(prompt.user.indexOf("## Contenu"));
     expect(prompt.user.indexOf("## Contenu")).toBeLessThan(prompt.user.indexOf("## Publication"));
