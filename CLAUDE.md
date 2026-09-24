@@ -70,7 +70,7 @@ Même base qu'Essential 2.0 (voir §15 pour les leçons apprises), avec ces choi
 - **FullCalendar v6** (`daygrid`, `timegrid`, `list`, `interaction`) pour le calendrier, locale `fr`.
 - **@dnd-kit** si besoin de glisser-déposer hors calendrier (réordonner).
 - **exceljs** pour lire les imports **et** générer le modèle Excel (validations de données, couleurs, formules). Ne pas utiliser le paquet npm `xlsx` (SheetJS), obsolète sur npm.
-- **Vercel AI SDK** (`ai` + `@ai-sdk/openai`) pour la génération en streaming et les sorties structurées. Modèle configurable par variable d'env (`AI_MODEL`, défaut `gpt-4o-mini`, cohérent avec les workflows ChoYou). Garder le code indépendant du fournisseur pour pouvoir passer sur Claude (`@ai-sdk/anthropic`).
+- **SDK officiel Anthropic** (`@anthropic-ai/sdk`) pour la génération en streaming et les sorties structurées (`messages.parse` + `zodOutputFormat`). Modèle **Claude Sonnet 5** configurable par variable d'env (`AI_MODEL`, défaut `claude-sonnet-5`). Tout appel au fournisseur passe par `src/server/ai/client.ts` : changer de fournisseur ne touche que ce fichier. *(Décidé le 24/09/2026 à la place du Vercel AI SDK + OpenAI prévu au départ.)*
 - **date-fns** + **date-fns-tz** : stockage en UTC, affichage en `Europe/Paris` (§6.4).
 - **sonner** pour les toasts. **cmdk** pour la palette de commandes (⌘K).
 - **React Email** (`@react-email/components`) pour les templates d'e-mails (relais et magic link).
@@ -914,6 +914,7 @@ EMAIL_FROM="Campaign · ChoYou <campaign@choyou.fr>"
 
 # IA
 ANTHROPIC_API_KEY=
+ANTHROPIC_WORKSPACE_ID=        # seulement pour une clé d'organisation non rattachée à un workspace
 AI_MODEL=claude-sonnet-5
 AI_DAILY_LIMIT_PER_BRAND=300
 
@@ -983,7 +984,7 @@ tests/   unit/  e2e/  fixtures/ (plan LDDLT d'origine + modèle)  screenshots/
 ## 19. État d'avancement
 
 - [ ] Lot 1 — Socle : **code terminé et testé (24/09/2026), mise en production en attente** des accès (voir « Reste à faire »)
-- [ ] Lot 2 — Import Excel + IA
+- [ ] Lot 2 — Import Excel + IA : **code terminé et testé (24/09/2026, IA simulée), essai réel de Sonnet 5 en attente** de la clé (voir bilan)
 - [ ] Lot 3 — Validation + Relais (V1 en service)
 - [ ] Lot 4 — Publication automatique
 - [ ] Lot 5 — Multi-client
@@ -1019,3 +1020,26 @@ tests/   unit/  e2e/  fixtures/ (plan LDDLT d'origine + modèle)  screenshots/
 Puis : déploiement selon `deploy/RUNBOOK.md`, vérification HTTPS/en-têtes, connexion Google réelle, parcours complet en production.
 
 **Points ouverts restants** (§16) : 3, 4, 5 (lot 3). Les points 6 et 8 sont tranchés (24/09/2026). Anne Laure est seedée avec l'adresse provisoire `anne-laure@example.invalid`.
+
+### Lot 2 — bilan (24/09/2026)
+
+**Fait** (commits `chore: add Anthropic SDK…` à `feat: AI in the campaign wizard…`) :
+- **Socle IA** (`src/server/ai/`) : client Claude unique (streaming + sorties structurées, erreurs traduites en français), assemblage du prompt pur et testé (§10.1-10.2 : marque dans le prompt système, mis en cache par marque ; campagne, contenu, post, relais dans le message), quota quotidien par marque (compteur atomique `AiUsage`, jour local de la marque) + limite de rafale par utilisateur, route de streaming `POST /api/ai/post`.
+- **Réglages › Prompt IA** : formulaire guidé (ligne éditoriale, ton, à faire / à éviter, hashtags en puces, CTA, compte à mentionner, exemples, instructions), autosave, bac à sable « Tester » qui utilise le prompt tel qu'il est à l'écran.
+- **Éditeur** : « Générer 3 propositions » (3 flux en parallèle, accroches différentes), retouches rapides, demande libre, propositions YouTube (titre, description, tags), **historique des versions** (`PostVersion` : textes IA, sessions d'édition humaine fusionnées sur 10 min, texte importé d'origine conservé) avec retour à une version. Rien n'est remplacé sans clic ; un post validé demande toujours confirmation. L'aperçu reste visible pendant le défilement.
+- **Excel** : modèle généré par exceljs (`GET /api/templates/campagne?marque=…`, même structure que `docs/templates/`, pré-rempli avec comptes et relais), import du modèle (lecture des valeurs, dates recalculées, correspondance tolérante, erreurs corrigeables sur place, lignes ignorables, « Ajouter » / « Remplacer les brouillons », transaction unique), **Excel libre** avec correspondance des colonnes proposée par l'IA puis interprétation des valeurs (l'Excel LDDLT d'origine s'importe en 18 posts sans erreur). Points d'entrée : liste des campagnes, planning, ⌘K, page Aujourd'hui (premier lancement), assistant.
+- **Assistant** : « M'aider à écrire le brief » (3 questions → brief, avec Annuler), étape 3 à trois cartes (Importer / Laisser l'IA proposer un planning / Calendrier vide), rédaction en masse à l'étape 4.
+- **Rédaction en masse** : depuis la page (3 en parallèle), progression, Arrêter, reprise (seuls les posts encore vides), arrêt propre à la limite quotidienne.
+
+**Qualité** : `npm run check` vert (170 tests Vitest : prompt, client simulé, quota, versions, normalisation, modèle LDDLT, aller-retour export → import, changement d'heure du 25/10, Excel libre). `npm run e2e` : 132 tests Playwright verts (dont import modèle, correction sur place, Excel libre, éditeur IA, prompt + bac à sable, assistant IA complet, rédaction en masse), contrôles axe WCAG 2.1 AA. Nouvelles captures : 05b, 08b, 13b, 21, 21b, 22.
+
+**Écarts par rapport à ce fichier (validés au plan du lot 2)** :
+- SDK officiel Anthropic au lieu du Vercel AI SDK ; `ANTHROPIC_API_KEY` (+ `ANTHROPIC_WORKSPACE_ID` facultatif) remplace `OPENAI_API_KEY` ; modèle Claude Sonnet 5.
+- Rédaction en masse pilotée depuis la page (concurrence 3), pas de file côté serveur.
+- Schéma : `PostVersion`, `AiUsage`, `ImportJob.payload` ; code d'erreur applicatif `UNAVAILABLE`.
+- `AI_TRANSPORT=mock` réservé aux e2e (refusé en https), comme `EMAIL_TRANSPORT=log`. Les heuristiques de `src/lib/import/free.ts` servent de repli quand l'IA est indisponible (et de mock).
+- Le « Mode » d'un compte dans l'Excel affiche aussi « Kit » (page LinkedIn publiée avec un kit en attendant le lot 4), expliqué dans l'onglet Lisez-moi.
+- Import : un relais inconnu nommé dans le planning n'est créé que par un administrateur de la marque et seulement avec son e-mail ; un planning proposé par l'IA passe par exactement les mêmes contrôles et la même transaction qu'un import.
+- Dépendances ajoutées : `@anthropic-ai/sdk` 0.128.0, `exceljs` 4.4.0 (alerte `npm audit` modérée sur `uuid`, fonctions v3/v5/v6 non utilisées par exceljs).
+
+**Reste à faire pour clore le lot 2** — côté Cem : une clé Anthropic **rattachée à un workspace** (ou `ANTHROPIC_WORKSPACE_ID` dans `.env.local`), puis `npx tsx scripts/ai-smoke.ts` pour valider la qualité du français sur un post LDDLT et un Short (quelques centimes).
